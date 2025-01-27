@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, timestamp, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
+import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -17,10 +18,66 @@ export const patients = pgTable("patients", {
   gender: text("gender"),
   city: text("city"),
   region: text("region"),
+  bloodType: text("blood_type"),
+  allergies: text("allergies").array(),
   healthConditions: text("health_conditions").array(),
+  medications: text("medications").array(),
+  chronicConditions: text("chronic_conditions").array(),
+  smokingStatus: text("smoking_status"),
+  exerciseFrequency: text("exercise_frequency"),
+  occupation: text("occupation"),
+  familyHistory: jsonb("family_history"),
+  emergencyContactName: text("emergency_contact_name"),
+  emergencyContactPhone: text("emergency_contact_phone"),
+  emergencyContactRelation: text("emergency_contact_relation"),
+  height: integer("height"),
+  weight: integer("weight"),
+  insuranceProvider: text("insurance_provider"),
+  insuranceNumber: text("insurance_number"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
 });
 
+// Create base schemas
+export const insertPatientSchema = createInsertSchema(patients).extend({
+  bloodType: z.string().nullable().optional(),
+  allergies: z.array(z.string()).nullable().optional(),
+  healthConditions: z.array(z.string()).nullable().optional(),
+  medications: z.array(z.string()).nullable().optional(),
+  chronicConditions: z.array(z.string()).nullable().optional(),
+  smokingStatus: z.string().nullable().optional(),
+  exerciseFrequency: z.string().nullable().optional(),
+  occupation: z.string().nullable().optional(),
+  familyHistory: z.record(z.array(z.string())).nullable().optional(),
+  emergencyContactName: z.string().nullable().optional(),
+  emergencyContactPhone: z.string().nullable().optional(),
+  emergencyContactRelation: z.string().nullable().optional(),
+  height: z.number().int().positive().nullable().optional(),
+  weight: z.number().int().positive().nullable().optional(),
+  insuranceProvider: z.string().nullable().optional(),
+  insuranceNumber: z.string().nullable().optional(),
+});
+
+export const selectPatientSchema = createSelectSchema(patients).extend({
+  bloodType: z.string().nullable().optional(),
+  allergies: z.array(z.string()).nullable().optional(),
+  healthConditions: z.array(z.string()).nullable().optional(),
+  medications: z.array(z.string()).nullable().optional(),
+  chronicConditions: z.array(z.string()).nullable().optional(),
+  smokingStatus: z.string().nullable().optional(),
+  exerciseFrequency: z.string().nullable().optional(),
+  occupation: z.string().nullable().optional(),
+  familyHistory: z.record(z.array(z.string())).nullable().optional(),
+  emergencyContactName: z.string().nullable().optional(),
+  emergencyContactPhone: z.string().nullable().optional(),
+  emergencyContactRelation: z.string().nullable().optional(),
+  height: z.number().int().positive().nullable().optional(),
+  weight: z.number().int().positive().nullable().optional(),
+  insuranceProvider: z.string().nullable().optional(),
+  insuranceNumber: z.string().nullable().optional(),
+});
+
+// Rest of the table definitions...
 export const appointments = pgTable("appointments", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id),
@@ -91,6 +148,7 @@ export const teleconsultations = pgTable("teleconsultations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Relations
 export const patientsRelations = relations(patients, ({ many }) => ({
   appointments: many(appointments),
   medicalRecords: many(medicalRecords),
@@ -138,42 +196,41 @@ export const medicalHistoryRelations = relations(medicalHistory, ({ one }) => ({
   }),
 }));
 
+// Type exports
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
-export type InsertUser = typeof users.$inferInsert;
-export type SelectUser = typeof users.$inferSelect;
-
-export const insertPatientSchema = createInsertSchema(patients);
-export const selectPatientSchema = createSelectSchema(patients);
-export type InsertPatient = typeof patients.$inferInsert;
-export type SelectPatient = typeof patients.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type SelectUser = z.infer<typeof selectUserSchema>;
 
 export const insertAppointmentSchema = createInsertSchema(appointments);
 export const selectAppointmentSchema = createSelectSchema(appointments);
-export type InsertAppointment = typeof appointments.$inferInsert;
-export type SelectAppointment = typeof appointments.$inferSelect;
+export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+export type SelectAppointment = z.infer<typeof selectAppointmentSchema>;
 
 export const insertMedicalRecordSchema = createInsertSchema(medicalRecords);
 export const selectMedicalRecordSchema = createSelectSchema(medicalRecords);
-export type InsertMedicalRecord = typeof medicalRecords.$inferInsert;
-export type SelectMedicalRecord = typeof medicalRecords.$inferSelect;
+export type InsertMedicalRecord = z.infer<typeof insertMedicalRecordSchema>;
+export type SelectMedicalRecord = z.infer<typeof selectMedicalRecordSchema>;
 
 export const insertLabResultSchema = createInsertSchema(labResults);
 export const selectLabResultSchema = createSelectSchema(labResults);
-export type InsertLabResult = typeof labResults.$inferInsert;
-export type SelectLabResult = typeof labResults.$inferSelect;
+export type InsertLabResult = z.infer<typeof insertLabResultSchema>;
+export type SelectLabResult = z.infer<typeof selectLabResultSchema>;
 
 export const insertPrescriptionSchema = createInsertSchema(prescriptions);
 export const selectPrescriptionSchema = createSelectSchema(prescriptions);
-export type InsertPrescription = typeof prescriptions.$inferInsert;
-export type SelectPrescription = typeof prescriptions.$inferSelect;
+export type InsertPrescription = z.infer<typeof insertPrescriptionSchema>;
+export type SelectPrescription = z.infer<typeof selectPrescriptionSchema>;
 
 export const insertMedicalHistorySchema = createInsertSchema(medicalHistory);
 export const selectMedicalHistorySchema = createSelectSchema(medicalHistory);
-export type InsertMedicalHistory = typeof medicalHistory.$inferInsert;
-export type SelectMedicalHistory = typeof medicalHistory.$inferSelect;
+export type InsertMedicalHistory = z.infer<typeof insertMedicalHistorySchema>;
+export type SelectMedicalHistory = z.infer<typeof selectMedicalHistorySchema>;
 
 export const insertTeleconsultationSchema = createInsertSchema(teleconsultations);
 export const selectTeleconsultationSchema = createSelectSchema(teleconsultations);
-export type InsertTeleconsultation = typeof teleconsultations.$inferInsert;
-export type SelectTeleconsultation = typeof teleconsultations.$inferSelect;
+export type InsertTeleconsultation = z.infer<typeof insertTeleconsultationSchema>;
+export type SelectTeleconsultation = z.infer<typeof selectTeleconsultationSchema>;
+
+export type InsertPatient = z.infer<typeof insertPatientSchema>;
+export type SelectPatient = z.infer<typeof selectPatientSchema>;

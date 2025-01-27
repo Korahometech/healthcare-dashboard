@@ -323,3 +323,71 @@ export function calculateHealthRiskFactors(
     }))
     .sort((a, b) => b.patientCount - a.patientCount);
 }
+
+export function calculateBMIDistribution(patients: SelectPatient[]): { category: string; count: number }[] {
+  const categories = {
+    'Underweight': 0,
+    'Normal': 0,
+    'Overweight': 0,
+    'Obese': 0
+  };
+
+  patients.forEach(patient => {
+    if (patient.height && patient.weight) {
+      const heightInMeters = patient.height / 100;
+      const bmi = patient.weight / (heightInMeters * heightInMeters);
+
+      if (bmi < 18.5) categories['Underweight']++;
+      else if (bmi < 25) categories['Normal']++;
+      else if (bmi < 30) categories['Overweight']++;
+      else categories['Obese']++;
+    }
+  });
+
+  return Object.entries(categories)
+    .map(([category, count]) => ({ category, count }));
+}
+
+export function analyzeLifestyleImpact(
+  patients: SelectPatient[]
+): { factor: string; healthConditionCount: number }[] {
+  const lifestyleImpact: Record<string, number> = {};
+
+  patients.forEach(patient => {
+    if (patient.smokingStatus === 'current' || patient.smokingStatus === 'former') {
+      lifestyleImpact['Smoking'] = (lifestyleImpact['Smoking'] || 0) + 
+        (patient.healthConditions?.length || 0);
+    }
+
+    if (patient.exerciseFrequency === 'rarely' || patient.exerciseFrequency === 'never') {
+      lifestyleImpact['Sedentary Lifestyle'] = (lifestyleImpact['Sedentary Lifestyle'] || 0) + 
+        (patient.healthConditions?.length || 0);
+    }
+  });
+
+  return Object.entries(lifestyleImpact)
+    .map(([factor, count]) => ({
+      factor,
+      healthConditionCount: count,
+    }))
+    .sort((a, b) => b.healthConditionCount - a.healthConditionCount);
+}
+
+export function analyzeFamilyHistoryPatterns(
+  patients: SelectPatient[]
+): { condition: string; count: number }[] {
+  const familyConditions: Record<string, number> = {};
+
+  patients.forEach(patient => {
+    if (patient.familyHistory) {
+      const history = patient.familyHistory as Record<string, string[]>;
+      Object.values(history).flat().forEach(condition => {
+        familyConditions[condition] = (familyConditions[condition] || 0) + 1;
+      });
+    }
+  });
+
+  return Object.entries(familyConditions)
+    .map(([condition, count]) => ({ condition, count }))
+    .sort((a, b) => b.count - a.count);
+}
