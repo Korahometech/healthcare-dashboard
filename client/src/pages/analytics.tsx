@@ -35,6 +35,7 @@ import {
   calculateGenderDistribution,
   calculateGeographicDistribution,
   calculateHealthConditionsDistribution,
+  getPatientVisitFrequency,
 } from "@/lib/analytics";
 
 const COLORS = [
@@ -52,6 +53,7 @@ export default function Analytics() {
 
   const isLoading = appointmentsLoading || patientsLoading;
 
+  // Early return if loading
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh]">
@@ -63,6 +65,15 @@ export default function Analytics() {
     );
   }
 
+  // Early return if data is missing
+  if (!appointments || !patients) {
+    return (
+      <div className="flex items-center justify-center min-h-[80vh]">
+        <p className="text-sm text-muted-foreground">{t('status.error')}</p>
+      </div>
+    );
+  }
+
   const completionRate = calculateCompletionRate(appointments);
   const cancellationRate = calculateCancellationRate(appointments);
   const ageDistribution = calculateAgeDistribution(patients);
@@ -70,47 +81,48 @@ export default function Analytics() {
   const geographicDistribution = calculateGeographicDistribution(patients);
   const appointmentTrends = getAppointmentsByTimeRange(appointments, timeRange);
   const healthConditions = calculateHealthConditionsDistribution(patients);
+  const visitFrequency = getPatientVisitFrequency(appointments);
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">{t('analytics.title')}</h1>
+        <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
         <p className="text-muted-foreground mt-1">
-          {t('analytics.subtitle')}
+          Detailed insights and performance metrics
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title={t('analytics.totalPatients')}
+          title="Total Patients"
           value={patients.length}
           icon={<Users className="h-4 w-4" />}
-          description={t('analytics.registeredPatients')}
+          description="Registered patients"
         />
         <StatsCard
-          title={t('analytics.completionRate')}
+          title="Completion Rate"
           value={`${completionRate}%`}
           icon={<TrendingUp className="h-4 w-4" />}
-          description={t('analytics.successfulAppointments')}
+          description="Successfully completed appointments"
         />
         <StatsCard
-          title={t('analytics.cancellationRate')}
+          title="Cancellation Rate"
           value={`${cancellationRate}%`}
           icon={<Calendar className="h-4 w-4" />}
-          description={t('analytics.cancelledAppointments')}
+          description="Cancelled appointments"
         />
         <StatsCard
-          title={t('analytics.regions')}
+          title="Regions"
           value={geographicDistribution.length}
           icon={<MapPin className="h-4 w-4" />}
-          description={t('analytics.coveredRegions')}
+          description="Covered regions"
         />
       </div>
 
       <DashboardLayout defaultSizes={[50, 50]}>
         <DashboardPanel>
           <div className="mb-4">
-            <h2 className="text-xl font-semibold">{t('analytics.ageDistribution')}</h2>
+            <h2 className="text-xl font-semibold">Age Distribution</h2>
           </div>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -135,7 +147,7 @@ export default function Analytics() {
 
         <DashboardPanel>
           <div className="mb-4">
-            <h2 className="text-xl font-semibold">{t('analytics.genderDistribution')}</h2>
+            <h2 className="text-xl font-semibold">Gender Distribution</h2>
           </div>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -170,7 +182,7 @@ export default function Analytics() {
       <DashboardLayout defaultSizes={[50, 50]}>
         <DashboardPanel>
           <div className="mb-4">
-            <h2 className="text-xl font-semibold">{t('analytics.geographicDistribution')}</h2>
+            <h2 className="text-xl font-semibold">Geographic Distribution</h2>
           </div>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -190,7 +202,7 @@ export default function Analytics() {
 
         <DashboardPanel>
           <div className="mb-4">
-            <h2 className="text-xl font-semibold">{t('analytics.healthConditions')}</h2>
+            <h2 className="text-xl font-semibold">Health Conditions</h2>
           </div>
           <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -208,10 +220,11 @@ export default function Analytics() {
           </div>
         </DashboardPanel>
       </DashboardLayout>
+
       <DashboardLayout defaultSizes={[60, 40]}>
         <DashboardPanel>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">{t('analytics.appointmentTrends')}</h2>
+            <h2 className="text-xl font-semibold">Appointment Trends</h2>
             <Select
               value={timeRange}
               onValueChange={(value: "daily" | "weekly" | "monthly") =>
@@ -219,12 +232,12 @@ export default function Analytics() {
               }
             >
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder={t('analytics.selectTimeRange')} />
+                <SelectValue placeholder="Select time range" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="daily">{t('analytics.daily')}</SelectItem>
-                <SelectItem value="weekly">{t('analytics.weekly')}</SelectItem>
-                <SelectItem value="monthly">{t('analytics.monthly')}</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -252,7 +265,7 @@ export default function Analytics() {
                 <Line
                   type="monotone"
                   dataKey="count"
-                  name={t('analytics.appointments')}
+                  name="Appointments"
                   stroke={COLORS[0]}
                   strokeWidth={2}
                   dot={false}
@@ -264,9 +277,9 @@ export default function Analytics() {
 
         <DashboardPanel>
           <div className="mb-4">
-            <h2 className="text-xl font-semibold">{t('analytics.visitFrequency')}</h2>
+            <h2 className="text-xl font-semibold">Visit Frequency</h2>
             <p className="text-sm text-muted-foreground">
-              {t('analytics.appointmentsPerPatient')}
+              Number of appointments per patient
             </p>
           </div>
           <div className="h-[400px]">
@@ -277,13 +290,13 @@ export default function Analytics() {
                   dataKey="visits"
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
-                  label={{ value: t('analytics.visits'), position: "insideBottom", offset: -5 }}
+                  label={{ value: "Visits", position: "insideBottom", offset: -5 }}
                 />
                 <YAxis
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
                   label={{
-                    value: t('analytics.numberOfPatients'),
+                    value: "Number of Patients",
                     angle: -90,
                     position: "insideLeft",
                   }}
