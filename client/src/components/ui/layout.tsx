@@ -12,18 +12,21 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "./sheet";
 import { ScrollArea } from "./scroll-area";
 import { useState } from "react";
+import { LanguageSwitcher } from "./language-switcher";
+import { useTranslation } from "react-i18next";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-  { icon: BarChart, label: "Analytics", href: "/analytics" },
-  { icon: Calendar, label: "Appointments", href: "/appointments" },
-  { icon: Users, label: "Patients", href: "/patients" },
+  { icon: LayoutDashboard, label: "navigation.dashboard", href: "/" },
+  { icon: BarChart, label: "navigation.analytics", href: "/analytics" },
+  { icon: Calendar, label: "navigation.appointments", href: "/appointments" },
+  { icon: Users, label: "navigation.patients", href: "/patients" },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { logout } = useUser();
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation();
 
   const Sidebar = () => (
     <div className="space-y-4 py-4">
@@ -37,20 +40,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 className="w-full justify-start"
               >
                 <Icon className="mr-2 h-4 w-4" />
-                {label}
+                {t(label)}
               </Button>
             </Link>
           ))}
         </div>
       </div>
       <div className="px-3 py-2">
+        <div className="mb-4">
+          <LanguageSwitcher />
+        </div>
         <Button
           variant="ghost"
           className="w-full justify-start"
           onClick={() => logout()}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Logout
+          {t('actions.logout')}
         </Button>
       </div>
     </div>

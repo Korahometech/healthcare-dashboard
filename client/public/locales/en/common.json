@@ -1,0 +1,29 @@
+{
+  "navigation": {
+    "dashboard": "Dashboard",
+    "analytics": "Analytics",
+    "appointments": "Appointments",
+    "patients": "Patients"
+  },
+  "actions": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add"
+  },
+  "status": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  },
+  "language": {
+    "en": "English",
+    "hr": "Hrvatski",
+    "sr": "Српски",
+    "bs": "Bosanski"
+  }
+}

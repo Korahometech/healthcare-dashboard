@@ -1,0 +1,29 @@
+{
+  "navigation": {
+    "dashboard": "Kontrolna tabla",
+    "analytics": "Analitika",
+    "appointments": "Termini",
+    "patients": "Pacijenti"
+  },
+  "actions": {
+    "login": "Prijava",
+    "logout": "Odjava",
+    "register": "Registracija",
+    "save": "Sačuvaj",
+    "cancel": "Otkaži",
+    "delete": "Obriši",
+    "edit": "Izmijeni",
+    "add": "Dodaj"
+  },
+  "status": {
+    "loading": "Učitavanje...",
+    "error": "Greška",
+    "success": "Uspjeh"
+  },
+  "language": {
+    "en": "English",
+    "hr": "Hrvatski",
+    "sr": "Српски",
+    "bs": "Bosanski"
+  }
+}
