@@ -3,6 +3,7 @@ import { usePatients } from "@/hooks/use-patients";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
+import { Calendar as CalendarIcon, Plus, Trash2, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -19,6 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Dialog,
@@ -27,7 +29,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,7 +62,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { InsertPatient } from "@db/schema";
 import { insertPatientSchema } from "@db/schema";
 
@@ -55,6 +77,16 @@ export default function Patients() {
       name: "",
       email: "",
       phone: "",
+      healthConditions: [],
+      medications: [],
+      allergies: [],
+      chronicConditions: [],
+      surgicalHistory: {},
+      familyHistory: {},
+      vaccinationHistory: {},
+      smokingStatus: "never",
+      exerciseFrequency: "never",
+      preferredCommunication: "email",
     },
   });
 
@@ -100,51 +132,441 @@ export default function Patients() {
           <DialogTrigger asChild>
             <Button>Add Patient</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>New Patient</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl>
-                        <Input type="tel" {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <Accordion type="single" collapsible defaultValue="personal">
+                  {/* Personal Information */}
+                  <AccordionItem value="personal">
+                    <AccordionTrigger>Personal Information</AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="dateOfBirth"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date of Birth</FormLabel>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={"outline"}
+                                      className={cn(
+                                        "w-full pl-3 text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                      )}
+                                    >
+                                      {field.value ? (
+                                        format(field.value, "PP")
+                                      ) : (
+                                        <span>Pick a date</span>
+                                      )}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) =>
+                                      date > new Date()
+                                    }
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="gender"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Gender</FormLabel>
+                              <Select onValueChange={field.onChange}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select gender" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="male">Male</SelectItem>
+                                  <SelectItem value="female">Female</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input type="email" {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone</FormLabel>
+                              <FormControl>
+                                <Input type="tel" {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="languagePreference"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Preferred Language</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Emergency Contact */}
+                  <AccordionItem value="emergency">
+                    <AccordionTrigger>Emergency Contact</AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="emergencyContactName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Contact Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="emergencyContactPhone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Contact Phone</FormLabel>
+                              <FormControl>
+                                <Input type="tel" {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="emergencyContactRelation"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Relationship</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Insurance Information */}
+                  <AccordionItem value="insurance">
+                    <AccordionTrigger>Insurance Information</AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="insuranceProvider"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Insurance Provider</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="insurancePolicyNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Policy Number</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="insuranceGroupNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Group Number</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Medical Information */}
+                  <AccordionItem value="medical">
+                    <AccordionTrigger>Medical Information</AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="bloodType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Blood Type</FormLabel>
+                              <Select onValueChange={field.onChange}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select blood type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="A+">A+</SelectItem>
+                                  <SelectItem value="A-">A-</SelectItem>
+                                  <SelectItem value="B+">B+</SelectItem>
+                                  <SelectItem value="B-">B-</SelectItem>
+                                  <SelectItem value="AB+">AB+</SelectItem>
+                                  <SelectItem value="AB-">AB-</SelectItem>
+                                  <SelectItem value="O+">O+</SelectItem>
+                                  <SelectItem value="O-">O-</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="height"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Height (cm)</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="weight"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Weight (kg)</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="allergies"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Allergies</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={(field.value || []).join(", ")} onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()))} />
+                              </FormControl>
+                              <FormDescription>
+                                Enter allergies separated by commas
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="healthConditions"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Health Conditions</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={(field.value || []).join(", ")} onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()))} />
+                              </FormControl>
+                              <FormDescription>
+                                Enter conditions separated by commas
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="medications"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Current Medications</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={(field.value || []).join(", ")} onChange={(e) => field.onChange(e.target.value.split(",").map(s => s.trim()))} />
+                              </FormControl>
+                              <FormDescription>
+                                Enter medications separated by commas
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Lifestyle Information */}
+                  <AccordionItem value="lifestyle">
+                    <AccordionTrigger>Lifestyle Information</AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="smokingStatus"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Smoking Status</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="never">Never</SelectItem>
+                                  <SelectItem value="former">Former</SelectItem>
+                                  <SelectItem value="current">Current</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="exerciseFrequency"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Exercise Frequency</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select frequency" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="never">Never</SelectItem>
+                                  <SelectItem value="rarely">Rarely</SelectItem>
+                                  <SelectItem value="moderate">Moderate</SelectItem>
+                                  <SelectItem value="regular">Regular</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Preferences */}
+                  <AccordionItem value="preferences">
+                    <AccordionTrigger>Healthcare Preferences</AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="preferredPharmacy"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Preferred Pharmacy</FormLabel>
+                              <FormControl>
+                                <Input {...field} value={field.value || ""} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="preferredCommunication"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Preferred Communication</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select method" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="email">Email</SelectItem>
+                                  <SelectItem value="phone">Phone</SelectItem>
+                                  <SelectItem value="sms">SMS</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
                 <Button type="submit" className="w-full">
                   {form.formState.isSubmitting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -170,6 +592,8 @@ export default function Patients() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Blood Type</TableHead>
+                <TableHead>Health Conditions</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
@@ -180,6 +604,8 @@ export default function Patients() {
                   <TableCell className="font-medium">{patient.name}</TableCell>
                   <TableCell>{patient.email}</TableCell>
                   <TableCell>{patient.phone}</TableCell>
+                  <TableCell>{patient.bloodType}</TableCell>
+                  <TableCell>{patient.healthConditions?.join(", ")}</TableCell>
                   <TableCell>
                     {patient.createdAt &&
                       format(new Date(patient.createdAt), "PP")}
