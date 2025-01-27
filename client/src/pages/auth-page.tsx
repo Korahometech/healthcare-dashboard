@@ -20,6 +20,7 @@ import type { InsertUser } from "@db/schema";
 export default function AuthPage() {
   const { login, register } = useUser();
   const { toast } = useToast();
+
   const form = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
@@ -30,33 +31,45 @@ export default function AuthPage() {
 
   const onSubmit = async (values: InsertUser) => {
     try {
-      await register(values);
-      toast({
-        title: "Success",
-        description: "Account created and logged in",
-      });
-    } catch (error: any) {
-      if (error.message.includes("exists")) {
-        try {
-          await login(values);
-          toast({
-            title: "Success",
-            description: "Logged in successfully",
-          });
-        } catch (loginError: any) {
+      // First try to login
+      try {
+        await login(values);
+        toast({
+          title: "Success",
+          description: "Logged in successfully",
+        });
+        return;
+      } catch (loginError: any) {
+        // If login fails, try to register
+        if (loginError.message.includes("Incorrect username") || loginError.message.includes("Incorrect password")) {
+          try {
+            await register(values);
+            toast({
+              title: "Success",
+              description: "Account created and logged in",
+            });
+            return;
+          } catch (registerError: any) {
+            toast({
+              title: "Error",
+              description: registerError.message,
+              variant: "destructive",
+            });
+          }
+        } else {
           toast({
             title: "Error",
             description: loginError.message,
             variant: "destructive",
           });
         }
-      } else {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
       }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
   };
 
@@ -81,7 +94,7 @@ export default function AuthPage() {
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input {...field} autoComplete="username" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -94,7 +107,11 @@ export default function AuthPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input 
+                        type="password" 
+                        {...field} 
+                        autoComplete="current-password"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
