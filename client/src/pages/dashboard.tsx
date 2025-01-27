@@ -2,8 +2,8 @@ import { StatsCard } from "@/components/ui/stats-card";
 import { useAppointments } from "@/hooks/use-appointments";
 import { usePatients } from "@/hooks/use-patients";
 import { Users, Calendar, CheckCircle, XCircle, Download, Loader2 } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
 import {
   Select,
   SelectContent,
@@ -209,15 +209,15 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        <Card className="p-6">
+      <DashboardLayout defaultSizes={[40, 60]}>
+        <DashboardPanel>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Appointment Status</h2>
             <div className="text-sm text-muted-foreground">
               Current Period
             </div>
           </div>
-          <div className="h-[300px] flex items-center">
+          <div className="h-[500px] flex items-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -244,9 +244,9 @@ export default function Dashboard() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </DashboardPanel>
 
-        <Card className="p-6">
+        <DashboardPanel>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Growth Trends</h2>
             <Select
@@ -263,7 +263,7 @@ export default function Dashboard() {
               </SelectContent>
             </Select>
           </div>
-          <div className="h-[300px]">
+          <div className="h-[500px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={monthlyStats}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
@@ -312,8 +312,8 @@ export default function Dashboard() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </Card>
-      </div>
+        </DashboardPanel>
+      </DashboardLayout>
     </div>
   );
 }
