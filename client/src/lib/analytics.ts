@@ -12,6 +12,7 @@ import {
   eachMonthOfInterval,
   subMonths,
   format,
+  differenceInYears,
 } from "date-fns";
 
 type TimeRange = "daily" | "weekly" | "monthly";
@@ -137,4 +138,68 @@ export function calculatePatientRetentionRate(
   return totalPatients > 0
     ? Math.round((returningPatients / totalPatients) * 100)
     : 0;
+}
+
+export function calculateAgeDistribution(patients: SelectPatient[]): { age: string; count: number }[] {
+  const ageGroups = {
+    '0-17': 0,
+    '18-30': 0,
+    '31-45': 0,
+    '46-60': 0,
+    '61+': 0
+  };
+
+  patients.forEach(patient => {
+    if (!patient.dateOfBirth) return;
+
+    const age = differenceInYears(new Date(), new Date(patient.dateOfBirth));
+
+    if (age <= 17) ageGroups['0-17']++;
+    else if (age <= 30) ageGroups['18-30']++;
+    else if (age <= 45) ageGroups['31-45']++;
+    else if (age <= 60) ageGroups['46-60']++;
+    else ageGroups['61+']++;
+  });
+
+  return Object.entries(ageGroups).map(([age, count]) => ({ age, count }));
+}
+
+export function calculateGenderDistribution(patients: SelectPatient[]): { gender: string; count: number }[] {
+  const distribution = patients.reduce((acc, patient) => {
+    if (patient.gender) {
+      acc[patient.gender] = (acc[patient.gender] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  return Object.entries(distribution).map(([gender, count]) => ({ gender, count }));
+}
+
+export function calculateGeographicDistribution(patients: SelectPatient[]): { region: string; count: number }[] {
+  const distribution = patients.reduce((acc, patient) => {
+    if (patient.region) {
+      acc[patient.region] = (acc[patient.region] || 0) + 1;
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
+  return Object.entries(distribution)
+    .map(([region, count]) => ({ region, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export function calculateHealthConditionsDistribution(patients: SelectPatient[]): { condition: string; count: number }[] {
+  const distribution: Record<string, number> = {};
+
+  patients.forEach(patient => {
+    if (patient.healthConditions) {
+      patient.healthConditions.forEach(condition => {
+        distribution[condition] = (distribution[condition] || 0) + 1;
+      });
+    }
+  });
+
+  return Object.entries(distribution)
+    .map(([condition, count]) => ({ condition, count }))
+    .sort((a, b) => b.count - a.count);
 }

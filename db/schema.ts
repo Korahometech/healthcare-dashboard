@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, date } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -13,6 +13,11 @@ export const patients = pgTable("patients", {
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
+  dateOfBirth: date("date_of_birth"),
+  gender: text("gender"),
+  city: text("city"),
+  region: text("region"),
+  healthConditions: text("health_conditions").array(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
