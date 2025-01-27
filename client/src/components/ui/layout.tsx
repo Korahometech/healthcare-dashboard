@@ -8,6 +8,7 @@ import {
   BarChart,
   LogOut,
   Menu,
+  Dna,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./sheet";
 import { ScrollArea } from "./scroll-area";
@@ -20,6 +21,7 @@ const menuItems = [
   { icon: BarChart, label: "navigation.analytics", href: "/analytics" },
   { icon: Calendar, label: "navigation.appointments", href: "/appointments" },
   { icon: Users, label: "navigation.patients", href: "/patients" },
+  { icon: Dna, label: "navigation.genetic_profiles", href: "/genetic-profiles" },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
