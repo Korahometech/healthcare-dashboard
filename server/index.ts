@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { createServer } from "http";
 
 const app = express();
 app.use(express.json());
@@ -36,30 +37,64 @@ app.use((req, res, next) => {
   next();
 });
 
-(async () => {
-  const server = registerRoutes(app);
+async function startServer(port: number): Promise<void> {
+  try {
+    const server = registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+      log(`Error: ${message}`);
+    });
 
-    res.status(status).json({ message });
-    throw err;
-  });
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+    return new Promise((resolve, reject) => {
+      server.listen(port, "0.0.0.0", () => {
+        log(`Server started successfully on port ${port}`);
+        resolve();
+      }).on('error', (error: any) => {
+        if (error.code === 'EADDRINUSE') {
+          log(`Port ${port} is in use, trying to free it...`);
+          import('node:child_process').then(({ exec }) => {
+            exec(`lsof -i :${port} | grep LISTEN | awk '{print $2}' | xargs kill -9`, (err) => {
+              if (err) {
+                log(`Could not free port ${port}: ${err.message}`);
+                reject(error);
+              } else {
+                log(`Port ${port} freed, restarting server...`);
+                setTimeout(() => {
+                  server.listen(port, "0.0.0.0", () => {
+                    log(`Server restarted successfully on port ${port}`);
+                    resolve();
+                  }).on('error', reject);
+                }, 1000);
+              }
+            });
+          });
+        } else {
+          reject(error);
+        }
+      });
+    });
+  } catch (error) {
+    log(`Failed to start server: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
   }
+}
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
+// IIFE to handle async startup
+(async () => {
   const PORT = 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
-  });
+  try {
+    await startServer(PORT);
+  } catch (error) {
+    log(`Fatal error starting server: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  }
 })();
