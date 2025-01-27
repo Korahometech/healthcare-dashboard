@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
 import { usePatients } from "@/hooks/use-patients";
 import { useGeneticProfiles } from "@/hooks/use-genetic-profiles";
-import { Loader2, FileUp, Dna, Activity, AlertTriangle } from "lucide-react";
+import { Loader2, FileUp, Dna, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -30,10 +30,17 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { insertGeneticProfileSchema } from "@db/schema";
 import type { InsertGeneticProfile } from "@db/schema";
 import { InsightsExplainer } from "@/components/genetic-insights/InsightsExplainer";
+import { cn } from "@/lib/utils";
 
 type GeneticProfileFormValues = Omit<InsertGeneticProfile, 'dnaSequenceData' | 'geneticMarkers' | 'ancestryInformation' | 'diseaseRiskFactors' | 'drugResponseMarkers'> & {
   dnaSequenceData?: Record<string, unknown>;
@@ -141,62 +148,100 @@ export default function GeneticProfiles() {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField
                   control={form.control}
                   name="reportDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Report Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} value={field.value || ''} />
-                      </FormControl>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(new Date(field.value), "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                              <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <CalendarComponent
+                            mode="single"
+                            selected={field.value ? new Date(field.value) : undefined}
+                            onSelect={(date) => field.onChange(date?.toISOString())}
+                            disabled={(date) =>
+                              date > new Date() || date < new Date("1900-01-01")
+                            }
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="laboratoryInfo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Laboratory Information</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="methodologyUsed"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Methodology</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="interpretationNotes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Interpretation Notes</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+                <div className="grid gap-6">
+                  <FormField
+                    control={form.control}
+                    name="laboratoryInfo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Laboratory Information</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter laboratory details" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="methodologyUsed"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Testing Methodology</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g. Next Generation Sequencing" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="interpretationNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Clinical Interpretation Notes</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            {...field} 
+                            placeholder="Enter any relevant clinical interpretations or notes"
+                            className="min-h-[100px] resize-none"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <Button type="submit" className="w-full">
                   <FileUp className="h-4 w-4 mr-2" />
-                  Upload Data
+                  Upload Genetic Profile
                 </Button>
               </form>
             </Form>
