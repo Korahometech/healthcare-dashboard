@@ -21,7 +21,7 @@ const menuItems = [
   { icon: BarChart, label: "navigation.analytics", href: "/analytics" },
   { icon: Calendar, label: "navigation.appointments", href: "/appointments" },
   { icon: Users, label: "navigation.patients", href: "/patients" },
-  { icon: Dna, label: "navigation.genetic_profiles", href: "/genetic-profiles" },
+  { icon: Dna, label: "Genetic Profiles", href: "/genetic-profiles" },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
