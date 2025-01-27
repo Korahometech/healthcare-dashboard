@@ -1,4 +1,4 @@
-import { SelectAppointment, SelectPatient, SelectLabResult, SelectPrescription, SelectMedicalHistory } from "@db/schema";
+import { SelectAppointment, SelectPatient, SelectLabResult } from "@db/schema";
 import {
   startOfDay,
   endOfDay,
@@ -13,11 +13,9 @@ import {
   subMonths,
   format,
   differenceInYears,
-  parseISO,
 } from "date-fns";
 
 type TimeRange = "daily" | "weekly" | "monthly";
-type AppointmentStatus = "scheduled" | "confirmed" | "cancelled";
 
 export function calculateCompletionRate(appointments: SelectAppointment[]): number {
   const completed = appointments.filter((a) => a.status === "confirmed").length;
@@ -40,7 +38,7 @@ export function getAppointmentsByTimeRange(
 ): { name: string; count: number }[] {
   const now = new Date();
   const startDate = subMonths(now, months);
-  
+
   const intervals = {
     daily: eachDayOfInterval({ start: startDate, end: now }),
     weekly: eachWeekOfInterval({ start: startDate, end: now }),
@@ -83,64 +81,6 @@ export function getAppointmentsByTimeRange(
   });
 }
 
-export function getAppointmentStatusDistribution(
-  appointments: SelectAppointment[],
-  timeRange?: { start: Date; end: Date }
-): Record<AppointmentStatus, number> {
-  const filteredAppointments = timeRange
-    ? appointments.filter((a) =>
-        isWithinInterval(new Date(a.date), timeRange)
-      )
-    : appointments;
-
-  return {
-    scheduled: filteredAppointments.filter((a) => a.status === "scheduled").length,
-    confirmed: filteredAppointments.filter((a) => a.status === "confirmed").length,
-    cancelled: filteredAppointments.filter((a) => a.status === "cancelled").length,
-  };
-}
-
-export function getPatientVisitFrequency(
-  appointments: SelectAppointment[]
-): { visits: number; count: number }[] {
-  const patientVisits = appointments.reduce((acc, appointment) => {
-    const patientId = appointment.patientId;
-    acc[patientId] = (acc[patientId] || 0) + 1;
-    return acc;
-  }, {} as Record<number, number>);
-
-  const frequencyCount = Object.values(patientVisits).reduce((acc, visits) => {
-    acc[visits] = (acc[visits] || 0) + 1;
-    return acc;
-  }, {} as Record<number, number>);
-
-  return Object.entries(frequencyCount)
-    .map(([visits, count]) => ({
-      visits: parseInt(visits),
-      count,
-    }))
-    .sort((a, b) => a.visits - b.visits);
-}
-
-export function calculatePatientRetentionRate(
-  appointments: SelectAppointment[]
-): number {
-  const patientVisits = appointments.reduce((acc, appointment) => {
-    const patientId = appointment.patientId;
-    acc[patientId] = (acc[patientId] || 0) + 1;
-    return acc;
-  }, {} as Record<number, number>);
-
-  const returningPatients = Object.values(patientVisits).filter(
-    (visits) => visits > 1
-  ).length;
-  const totalPatients = Object.keys(patientVisits).length;
-
-  return totalPatients > 0
-    ? Math.round((returningPatients / totalPatients) * 100)
-    : 0;
-}
-
 export function calculateAgeDistribution(patients: SelectPatient[]): { age: string; count: number }[] {
   const ageGroups = {
     '0-17': 0,
@@ -176,19 +116,6 @@ export function calculateGenderDistribution(patients: SelectPatient[]): { gender
   return Object.entries(distribution).map(([gender, count]) => ({ gender, count }));
 }
 
-export function calculateGeographicDistribution(patients: SelectPatient[]): { region: string; count: number }[] {
-  const distribution = patients.reduce((acc, patient) => {
-    if (patient.region) {
-      acc[patient.region] = (acc[patient.region] || 0) + 1;
-    }
-    return acc;
-  }, {} as Record<string, number>);
-
-  return Object.entries(distribution)
-    .map(([region, count]) => ({ region, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
 export function calculateHealthConditionsDistribution(patients: SelectPatient[]): { condition: string; count: number }[] {
   const distribution: Record<string, number> = {};
 
@@ -205,36 +132,6 @@ export function calculateHealthConditionsDistribution(patients: SelectPatient[])
     .sort((a, b) => b.count - a.count);
 }
 
-export function analyzeTreatmentEffectiveness(
-  prescriptions: SelectPrescription[],
-  medicalHistory: SelectMedicalHistory[]
-): { medication: string; effectiveness: number }[] {
-  const medicationOutcomes: Record<string, { success: number; total: number }> = {};
-
-  prescriptions.forEach(prescription => {
-    const relatedEvents = medicalHistory.filter(
-      event => 
-        event.eventDate >= new Date(prescription.startDate) &&
-        (!prescription.endDate || event.eventDate <= new Date(prescription.endDate))
-    );
-
-    const successfulOutcomes = relatedEvents.filter(
-      event => event.outcome === 'improved' || event.outcome === 'resolved'
-    ).length;
-
-    medicationOutcomes[prescription.medication] = medicationOutcomes[prescription.medication] || { success: 0, total: 0 };
-    medicationOutcomes[prescription.medication].success += successfulOutcomes;
-    medicationOutcomes[prescription.medication].total += relatedEvents.length;
-  });
-
-  return Object.entries(medicationOutcomes)
-    .map(([medication, { success, total }]) => ({
-      medication,
-      effectiveness: total > 0 ? (success / total) * 100 : 0,
-    }))
-    .sort((a, b) => b.effectiveness - a.effectiveness);
-}
-
 export function analyzeLabResultsTrends(
   labResults: SelectLabResult[]
 ): { testName: string; trends: { date: string; value: number }[] }[] {
@@ -242,11 +139,9 @@ export function analyzeLabResultsTrends(
     if (!acc[result.testName]) {
       acc[result.testName] = [];
     }
-    // Assuming results contains a 'value' field in the JSON
-    const value = typeof result.results === 'object' ? (result.results as any).value : 0;
     acc[result.testName].push({
       date: format(new Date(result.testDate), 'yyyy-MM-dd'),
-      value,
+      value: result.value,
     });
     return acc;
   }, {} as Record<string, { date: string; value: number }[]>);
@@ -254,34 +149,7 @@ export function analyzeLabResultsTrends(
   return Object.entries(resultsByTest)
     .map(([testName, data]) => ({
       testName,
-      trends: data.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()),
-    }));
-}
-
-export function analyzeHealthConditionsProgress(
-  medicalHistory: SelectMedicalHistory[]
-): { condition: string; progress: { date: string; severity: number }[] }[] {
-  const progressByCondition = medicalHistory.reduce((acc, event) => {
-    if (!acc[event.eventType]) {
-      acc[event.eventType] = [];
-    }
-    // Convert severity to numeric value (e.g., 'mild' = 1, 'moderate' = 2, 'severe' = 3)
-    const severityMap: Record<string, number> = {
-      mild: 1,
-      moderate: 2,
-      severe: 3,
-    };
-    acc[event.eventType].push({
-      date: format(new Date(event.eventDate), 'yyyy-MM-dd'),
-      severity: severityMap[event.severity?.toLowerCase() || ''] || 0,
-    });
-    return acc;
-  }, {} as Record<string, { date: string; severity: number }[]>);
-
-  return Object.entries(progressByCondition)
-    .map(([condition, data]) => ({
-      condition,
-      progress: data.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()),
+      trends: data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     }));
 }
 
@@ -293,7 +161,8 @@ export function calculateHealthRiskFactors(
 
   patients.forEach(patient => {
     // Age-based risk factors
-    const age = differenceInYears(new Date(), new Date(patient.dateOfBirth || Date.now()));
+    const age = patient.dateOfBirth ?
+      differenceInYears(new Date(), new Date(patient.dateOfBirth)) : 0;
     if (age > 60) riskFactors['Age > 60'] = (riskFactors['Age > 60'] || 0) + 1;
 
     // Health conditions
@@ -304,11 +173,8 @@ export function calculateHealthRiskFactors(
     // Abnormal lab results
     const patientLabResults = labResults.filter(result => result.patientId === patient.id);
     patientLabResults.forEach(result => {
-      const referenceRange = result.referenceRange as { min?: number; max?: number } | null;
-      const value = (result.results as any).value;
-
-      if (referenceRange && value) {
-        if (value < (referenceRange.min || 0) || value > (referenceRange.max || 0)) {
+      if (result.referenceMin !== null && result.referenceMax !== null) {
+        if (result.value < result.referenceMin || result.value > result.referenceMax) {
           const riskFactor = `Abnormal ${result.testName}`;
           riskFactors[riskFactor] = (riskFactors[riskFactor] || 0) + 1;
         }
@@ -321,7 +187,7 @@ export function calculateHealthRiskFactors(
       riskFactor,
       patientCount,
     }))
-    .sort((a, b) => b.patientCount - a.patientCount);
+    .sort((a, b) => b.patientCount - b.patientCount);
 }
 
 export function calculateBMIDistribution(patients: SelectPatient[]): { category: string; count: number }[] {
@@ -346,48 +212,4 @@ export function calculateBMIDistribution(patients: SelectPatient[]): { category:
 
   return Object.entries(categories)
     .map(([category, count]) => ({ category, count }));
-}
-
-export function analyzeLifestyleImpact(
-  patients: SelectPatient[]
-): { factor: string; healthConditionCount: number }[] {
-  const lifestyleImpact: Record<string, number> = {};
-
-  patients.forEach(patient => {
-    if (patient.smokingStatus === 'current' || patient.smokingStatus === 'former') {
-      lifestyleImpact['Smoking'] = (lifestyleImpact['Smoking'] || 0) + 
-        (patient.healthConditions?.length || 0);
-    }
-
-    if (patient.exerciseFrequency === 'rarely' || patient.exerciseFrequency === 'never') {
-      lifestyleImpact['Sedentary Lifestyle'] = (lifestyleImpact['Sedentary Lifestyle'] || 0) + 
-        (patient.healthConditions?.length || 0);
-    }
-  });
-
-  return Object.entries(lifestyleImpact)
-    .map(([factor, count]) => ({
-      factor,
-      healthConditionCount: count,
-    }))
-    .sort((a, b) => b.healthConditionCount - a.healthConditionCount);
-}
-
-export function analyzeFamilyHistoryPatterns(
-  patients: SelectPatient[]
-): { condition: string; count: number }[] {
-  const familyConditions: Record<string, number> = {};
-
-  patients.forEach(patient => {
-    if (patient.familyHistory) {
-      const history = patient.familyHistory as Record<string, string[]>;
-      Object.values(history).flat().forEach(condition => {
-        familyConditions[condition] = (familyConditions[condition] || 0) + 1;
-      });
-    }
-  });
-
-  return Object.entries(familyConditions)
-    .map(([condition, count]) => ({ condition, count }))
-    .sort((a, b) => b.count - a.count);
 }
