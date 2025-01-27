@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAppointments } from "@/hooks/use-appointments";
 import { usePatients } from "@/hooks/use-patients";
+import { useHealthTrends } from "@/hooks/use-health-trends"; // Added import
 import { Loader2, Calendar, Users, TrendingUp, MapPin } from "lucide-react";
 import { StatsCard } from "@/components/ui/stats-card";
 import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
@@ -48,10 +49,11 @@ const COLORS = [
 export default function Analytics() {
   const { appointments, isLoading: appointmentsLoading } = useAppointments();
   const { patients, isLoading: patientsLoading } = usePatients();
+  const { data: healthTrends, isLoading: healthTrendsLoading } = useHealthTrends(); // Added healthTrends hook
   const [timeRange, setTimeRange] = useState<"daily" | "weekly" | "monthly">("weekly");
   const { t } = useTranslation();
 
-  const isLoading = appointmentsLoading || patientsLoading;
+  const isLoading = appointmentsLoading || patientsLoading || healthTrendsLoading;
 
   // Early return if loading
   if (isLoading) {
@@ -66,7 +68,7 @@ export default function Analytics() {
   }
 
   // Early return if data is missing
-  if (!appointments || !patients) {
+  if (!appointments || !patients || !healthTrends) { // Added healthTrends check
     return (
       <div className="flex items-center justify-center min-h-[80vh]">
         <p className="text-sm text-muted-foreground">{t('status.error')}</p>
@@ -322,6 +324,152 @@ export default function Analytics() {
           </div>
         </DashboardPanel>
       </DashboardLayout>
+
+      {/* Add new Health Trends section */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Health Trends Analysis</h2>
+        <DashboardLayout defaultSizes={[50, 50]}>
+          <DashboardPanel>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold">Treatment Effectiveness</h3>
+              <p className="text-sm text-muted-foreground">
+                Success rate of different medications
+              </p>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={healthTrends.treatmentEffectiveness}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+                  <XAxis
+                    dataKey="medication"
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    interval={0}
+                  />
+                  <YAxis
+                    label={{
+                      value: "Effectiveness (%)",
+                      angle: -90,
+                      position: "insideLeft",
+                    }}
+                  />
+                  <Tooltip />
+                  <Bar dataKey="effectiveness" fill={COLORS[0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+
+          <DashboardPanel>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold">Health Risk Factors</h3>
+              <p className="text-sm text-muted-foreground">
+                Distribution of health risk factors across patients
+              </p>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={healthTrends.riskFactors}
+                  layout="vertical"
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+                  <XAxis type="number" />
+                  <YAxis
+                    dataKey="riskFactor"
+                    type="category"
+                    width={150}
+                  />
+                  <Tooltip />
+                  <Bar dataKey="patientCount" fill={COLORS[1]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+        </DashboardLayout>
+
+        <DashboardLayout defaultSizes={[50, 50]} className="mt-4">
+          <DashboardPanel>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold">Lab Results Trends</h3>
+              <p className="text-sm text-muted-foreground">
+                Historical trends of key lab test results
+              </p>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+                  <XAxis
+                    dataKey="date"
+                    type="category"
+                    allowDuplicatedCategory={false}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {healthTrends.labTrends.map((test, index) => (
+                    <Line
+                      key={test.testName}
+                      data={test.trends}
+                      name={test.testName}
+                      type="monotone"
+                      dataKey="value"
+                      stroke={COLORS[index % COLORS.length]}
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+
+          <DashboardPanel>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold">Condition Severity Tracking</h3>
+              <p className="text-sm text-muted-foreground">
+                Progress of health conditions over time
+              </p>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+                  <XAxis
+                    dataKey="date"
+                    type="category"
+                    allowDuplicatedCategory={false}
+                  />
+                  <YAxis
+                    domain={[0, 3]}
+                    ticks={[0, 1, 2, 3]}
+                    tickFormatter={(value) => {
+                      const severity = ['None', 'Mild', 'Moderate', 'Severe'];
+                      return severity[value] || '';
+                    }}
+                  />
+                  <Tooltip />
+                  <Legend />
+                  {healthTrends.conditionsProgress.map((condition, index) => (
+                    <Line
+                      key={condition.condition}
+                      data={condition.progress}
+                      name={condition.condition}
+                      type="monotone"
+                      dataKey="severity"
+                      stroke={COLORS[index % COLORS.length]}
+                      strokeWidth={2}
+                      dot={true}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+        </DashboardLayout>
+      </div>
     </div>
   );
 }

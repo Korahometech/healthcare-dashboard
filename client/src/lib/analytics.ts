@@ -1,4 +1,4 @@
-import { SelectAppointment, SelectPatient } from "@db/schema";
+import { SelectAppointment, SelectPatient, SelectLabResult, SelectPrescription, SelectMedicalHistory } from "@db/schema";
 import {
   startOfDay,
   endOfDay,
@@ -13,6 +13,7 @@ import {
   subMonths,
   format,
   differenceInYears,
+  parseISO,
 } from "date-fns";
 
 type TimeRange = "daily" | "weekly" | "monthly";
@@ -202,4 +203,123 @@ export function calculateHealthConditionsDistribution(patients: SelectPatient[])
   return Object.entries(distribution)
     .map(([condition, count]) => ({ condition, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+export function analyzeTreatmentEffectiveness(
+  prescriptions: SelectPrescription[],
+  medicalHistory: SelectMedicalHistory[]
+): { medication: string; effectiveness: number }[] {
+  const medicationOutcomes: Record<string, { success: number; total: number }> = {};
+
+  prescriptions.forEach(prescription => {
+    const relatedEvents = medicalHistory.filter(
+      event => 
+        event.eventDate >= new Date(prescription.startDate) &&
+        (!prescription.endDate || event.eventDate <= new Date(prescription.endDate))
+    );
+
+    const successfulOutcomes = relatedEvents.filter(
+      event => event.outcome === 'improved' || event.outcome === 'resolved'
+    ).length;
+
+    medicationOutcomes[prescription.medication] = medicationOutcomes[prescription.medication] || { success: 0, total: 0 };
+    medicationOutcomes[prescription.medication].success += successfulOutcomes;
+    medicationOutcomes[prescription.medication].total += relatedEvents.length;
+  });
+
+  return Object.entries(medicationOutcomes)
+    .map(([medication, { success, total }]) => ({
+      medication,
+      effectiveness: total > 0 ? (success / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.effectiveness - a.effectiveness);
+}
+
+export function analyzeLabResultsTrends(
+  labResults: SelectLabResult[]
+): { testName: string; trends: { date: string; value: number }[] }[] {
+  const resultsByTest = labResults.reduce((acc, result) => {
+    if (!acc[result.testName]) {
+      acc[result.testName] = [];
+    }
+    // Assuming results contains a 'value' field in the JSON
+    const value = typeof result.results === 'object' ? (result.results as any).value : 0;
+    acc[result.testName].push({
+      date: format(new Date(result.testDate), 'yyyy-MM-dd'),
+      value,
+    });
+    return acc;
+  }, {} as Record<string, { date: string; value: number }[]>);
+
+  return Object.entries(resultsByTest)
+    .map(([testName, data]) => ({
+      testName,
+      trends: data.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()),
+    }));
+}
+
+export function analyzeHealthConditionsProgress(
+  medicalHistory: SelectMedicalHistory[]
+): { condition: string; progress: { date: string; severity: number }[] }[] {
+  const progressByCondition = medicalHistory.reduce((acc, event) => {
+    if (!acc[event.eventType]) {
+      acc[event.eventType] = [];
+    }
+    // Convert severity to numeric value (e.g., 'mild' = 1, 'moderate' = 2, 'severe' = 3)
+    const severityMap: Record<string, number> = {
+      mild: 1,
+      moderate: 2,
+      severe: 3,
+    };
+    acc[event.eventType].push({
+      date: format(new Date(event.eventDate), 'yyyy-MM-dd'),
+      severity: severityMap[event.severity?.toLowerCase() || ''] || 0,
+    });
+    return acc;
+  }, {} as Record<string, { date: string; severity: number }[]>);
+
+  return Object.entries(progressByCondition)
+    .map(([condition, data]) => ({
+      condition,
+      progress: data.sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()),
+    }));
+}
+
+export function calculateHealthRiskFactors(
+  patients: SelectPatient[],
+  labResults: SelectLabResult[]
+): { riskFactor: string; patientCount: number }[] {
+  const riskFactors: Record<string, number> = {};
+
+  patients.forEach(patient => {
+    // Age-based risk factors
+    const age = differenceInYears(new Date(), new Date(patient.dateOfBirth || Date.now()));
+    if (age > 60) riskFactors['Age > 60'] = (riskFactors['Age > 60'] || 0) + 1;
+
+    // Health conditions
+    patient.healthConditions?.forEach(condition => {
+      riskFactors[condition] = (riskFactors[condition] || 0) + 1;
+    });
+
+    // Abnormal lab results
+    const patientLabResults = labResults.filter(result => result.patientId === patient.id);
+    patientLabResults.forEach(result => {
+      const referenceRange = result.referenceRange as { min?: number; max?: number } | null;
+      const value = (result.results as any).value;
+
+      if (referenceRange && value) {
+        if (value < (referenceRange.min || 0) || value > (referenceRange.max || 0)) {
+          const riskFactor = `Abnormal ${result.testName}`;
+          riskFactors[riskFactor] = (riskFactors[riskFactor] || 0) + 1;
+        }
+      }
+    });
+  });
+
+  return Object.entries(riskFactors)
+    .map(([riskFactor, patientCount]) => ({
+      riskFactor,
+      patientCount,
+    }))
+    .sort((a, b) => b.patientCount - a.patientCount);
 }
