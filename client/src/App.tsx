@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
+import Analytics from "@/pages/analytics";
 import Appointments from "@/pages/appointments";
 import Patients from "@/pages/patients";
 import NotFound from "@/pages/not-found";
@@ -30,6 +31,7 @@ function Router() {
     <Layout>
       <Switch>
         <Route path="/" component={Dashboard} />
+        <Route path="/analytics" component={Analytics} />
         <Route path="/appointments" component={Appointments} />
         <Route path="/patients" component={Patients} />
         <Route component={NotFound} />

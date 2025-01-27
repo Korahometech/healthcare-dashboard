@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Calendar,
   Users,
+  BarChart,
   LogOut,
   Menu,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import { useState } from "react";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
+  { icon: BarChart, label: "Analytics", href: "/analytics" },
   { icon: Calendar, label: "Appointments", href: "/appointments" },
   { icon: Users, label: "Patients", href: "/patients" },
 ];
