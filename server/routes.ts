@@ -126,35 +126,43 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/appointments", async (req, res) => {
     const { isTeleconsultation, meetingUrl, duration, ...appointmentData } = req.body;
 
-    // Start a transaction to create both appointment and teleconsultation
-    const appointment = await db.transaction(async (tx) => {
-      const [newAppointment] = await tx
-        .insert(appointments)
-        .values(appointmentData)
-        .returning();
+    try {
+      // Start a transaction to create both appointment and teleconsultation
+      const appointment = await db.transaction(async (tx) => {
+        const [newAppointment] = await tx
+          .insert(appointments)
+          .values(appointmentData)
+          .returning();
 
-      if (isTeleconsultation) {
-        await tx.insert(teleconsultations).values({
-          appointmentId: newAppointment.id,
-          meetingUrl,
-          duration,
-          startTime: new Date(appointmentData.date),
-          status: "scheduled",
-        });
-      }
+        if (isTeleconsultation) {
+          await tx.insert(teleconsultations).values({
+            appointmentId: newAppointment.id,
+            meetingUrl,
+            duration,
+            startTime: new Date(appointmentData.date),
+            status: "scheduled",
+          });
+        }
 
-      return newAppointment;
-    });
+        return newAppointment;
+      });
 
-    const appointmentWithDetails = await db.query.appointments.findFirst({
-      where: eq(appointments.id, appointment.id),
-      with: {
-        patient: true,
-        teleconsultation: true,
-      },
-    });
+      const appointmentWithDetails = await db.query.appointments.findFirst({
+        where: eq(appointments.id, appointment.id),
+        with: {
+          patient: true,
+          teleconsultation: true,
+        },
+      });
 
-    res.json(appointmentWithDetails);
+      res.json(appointmentWithDetails);
+    } catch (error: any) {
+      console.error('Error creating appointment:', error);
+      res.status(500).json({ 
+        error: 'Failed to create appointment',
+        details: error.message 
+      });
+    }
   });
 
   app.put("/api/appointments/:id/status", async (req, res) => {
