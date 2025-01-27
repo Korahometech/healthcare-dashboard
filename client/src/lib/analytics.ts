@@ -213,3 +213,148 @@ export function calculateBMIDistribution(patients: SelectPatient[]): { category:
   return Object.entries(categories)
     .map(([category, count]) => ({ category, count }));
 }
+
+
+// Add new analytics functions for advanced visualizations
+export function calculateMetricCorrelation(
+  patients: SelectPatient[],
+  labResults: SelectLabResult[]
+): { metric1: string; metric2: string; correlation: number }[] {
+  const correlations: { metric1: string; metric2: string; correlation: number }[] = [];
+
+  // Calculate correlations between different health metrics
+  const metrics = [
+    { name: 'BMI', getValue: (p: SelectPatient) => 
+      p.height && p.weight ? p.weight / ((p.height / 100) ** 2) : null },
+    { name: 'Blood Pressure', getValue: (p: SelectPatient, r: SelectLabResult[]) => 
+      r.find(x => x.testName === 'Blood Pressure')?.value },
+    { name: 'Cholesterol', getValue: (p: SelectPatient, r: SelectLabResult[]) => 
+      r.find(x => x.testName === 'Cholesterol')?.value },
+  ];
+
+  // Calculate correlations between each pair of metrics
+  for (let i = 0; i < metrics.length; i++) {
+    for (let j = i + 1; j < metrics.length; j++) {
+      const data = patients.map(patient => {
+        const patientResults = labResults.filter(r => r.patientId === patient.id);
+        return {
+          value1: metrics[i].getValue(patient, patientResults),
+          value2: metrics[j].getValue(patient, patientResults)
+        };
+      }).filter(d => d.value1 != null && d.value2 != null);
+
+      if (data.length > 0) {
+        const correlation = calculatePearsonCorrelation(
+          data.map(d => d.value1!),
+          data.map(d => d.value2!)
+        );
+
+        correlations.push({
+          metric1: metrics[i].name,
+          metric2: metrics[j].name,
+          correlation
+        });
+      }
+    }
+  }
+
+  return correlations;
+}
+
+export function calculateHealthTrends(
+  patients: SelectPatient[],
+  labResults: SelectLabResult[]
+): { 
+  category: string;
+  trends: { date: string; average: number; min: number; max: number }[] 
+}[] {
+  const testCategories = Array.from(new Set(labResults.map(r => r.testName)));
+
+  return testCategories.map(category => {
+    const categoryResults = labResults.filter(r => r.testName === category);
+    const dateGroups = categoryResults.reduce((acc, result) => {
+      const date = format(new Date(result.testDate), 'yyyy-MM-dd');
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(result.value);
+      return acc;
+    }, {} as Record<string, number[]>);
+
+    const trends = Object.entries(dateGroups).map(([date, values]) => ({
+      date,
+      average: values.reduce((a, b) => a + b, 0) / values.length,
+      min: Math.min(...values),
+      max: Math.max(...values)
+    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return {
+      category,
+      trends
+    };
+  });
+}
+
+export function predictHealthTrends(
+  labResults: SelectLabResult[]
+): { testName: string; predictions: { date: string; value: number; }[] }[] {
+  const testCategories = Array.from(new Set(labResults.map(r => r.testName)));
+
+  return testCategories.map(testName => {
+    const categoryResults = labResults
+      .filter(r => r.testName === testName)
+      .sort((a, b) => new Date(a.testDate).getTime() - new Date(b.testDate).getTime());
+
+    if (categoryResults.length < 2) return { testName, predictions: [] };
+
+    // Simple linear regression for prediction
+    const values = categoryResults.map(r => r.value);
+    const timestamps = categoryResults.map(r => new Date(r.testDate).getTime());
+    const { slope, intercept } = calculateLinearRegression(timestamps, values);
+
+    // Predict next 3 months
+    const lastDate = new Date(categoryResults[categoryResults.length - 1].testDate);
+    const predictions = Array.from({ length: 3 }).map((_, i) => {
+      const predictedDate = new Date(lastDate);
+      predictedDate.setMonth(predictedDate.getMonth() + i + 1);
+      const predictedValue = slope * predictedDate.getTime() + intercept;
+      return {
+        date: format(predictedDate, 'yyyy-MM-dd'),
+        value: Math.round(predictedValue * 100) / 100
+      };
+    });
+
+    return {
+      testName,
+      predictions
+    };
+  });
+}
+
+// Helper functions for calculations
+function calculatePearsonCorrelation(x: number[], y: number[]): number {
+  const n = x.length;
+  const sum1 = x.reduce((a, b) => a + b, 0);
+  const sum2 = y.reduce((a, b) => a + b, 0);
+  const sum1Sq = x.reduce((a, b) => a + b * b, 0);
+  const sum2Sq = y.reduce((a, b) => a + b * b, 0);
+  const pSum = x.reduce((a, b, i) => a + b * y[i], 0);
+
+  const num = pSum - (sum1 * sum2 / n);
+  const den = Math.sqrt((sum1Sq - sum1 * sum1 / n) * (sum2Sq - sum2 * sum2 / n));
+
+  return den === 0 ? 0 : Math.round((num / den) * 1000) / 1000;
+}
+
+function calculateLinearRegression(x: number[], y: number[]): { slope: number; intercept: number } {
+  const n = x.length;
+  const sumX = x.reduce((a, b) => a + b, 0);
+  const sumY = y.reduce((a, b) => a + b, 0);
+  const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+  const sumXX = x.reduce((a, b) => a + b * b, 0);
+
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  return { slope, intercept };
+}

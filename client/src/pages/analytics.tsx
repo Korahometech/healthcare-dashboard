@@ -36,6 +36,18 @@ import {
   calculateHealthConditionsDistribution,
   calculateBMIDistribution,
 } from "@/lib/analytics";
+import {
+  AreaChart,
+  Area,
+  ScatterChart,
+  Scatter,
+  ZAxis,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+} from "recharts";
 
 const COLORS = [
   'hsl(var(--primary))',
@@ -301,6 +313,156 @@ export default function Analytics() {
           </div>
         </DashboardPanel>
       </DashboardLayout>
+
+      {/* New Advanced Analytics Section */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Advanced Health Analytics</h2>
+
+        <DashboardLayout defaultSizes={[50, 50]}>
+          <DashboardPanel>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold">Health Metrics Correlation</h3>
+              <p className="text-sm text-muted-foreground">
+                Relationship between different health indicators
+              </p>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <CartesianGrid />
+                  <XAxis 
+                    type="number" 
+                    dataKey="value1" 
+                    name="metric1"
+                    label={{ value: healthTrends.metricCorrelations[0]?.metric1, position: 'bottom' }}
+                  />
+                  <YAxis 
+                    type="number" 
+                    dataKey="value2" 
+                    name="metric2"
+                    label={{ value: healthTrends.metricCorrelations[0]?.metric2, angle: -90, position: 'left' }}
+                  />
+                  <ZAxis 
+                    type="number"
+                    range={[100, 100]}
+                  />
+                  <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                  <Scatter data={healthTrends.metricCorrelations} fill={COLORS[0]} />
+                </ScatterChart>
+              </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+
+          <DashboardPanel>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold">Health Risk Radar</h3>
+              <p className="text-sm text-muted-foreground">
+                Multi-dimensional view of health risk factors
+              </p>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="80%">
+                  <PolarGrid />
+                  <PolarAngleAxis 
+                    dataKey="riskFactor"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                  />
+                  <PolarRadiusAxis />
+                  <Radar
+                    name="Risk Factors"
+                    dataKey="patientCount"
+                    data={healthTrends.riskFactors.slice(0, 6)}
+                    fill={COLORS[0]}
+                    fillOpacity={0.6}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+        </DashboardLayout>
+
+        <DashboardLayout defaultSizes={[60, 40]} className="mt-4">
+          <DashboardPanel>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold">Detailed Health Trends</h3>
+              <p className="text-sm text-muted-foreground">
+                Historical trends with min/max ranges
+              </p>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={healthTrends.detailedTrends[0]?.trends || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Area
+                    type="monotone"
+                    dataKey="max"
+                    stackId="1"
+                    stroke={COLORS[2]}
+                    fill={COLORS[2]}
+                    fillOpacity={0.2}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="average"
+                    stackId="2"
+                    stroke={COLORS[0]}
+                    fill={COLORS[0]}
+                    fillOpacity={0.8}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="min"
+                    stackId="3"
+                    stroke={COLORS[1]}
+                    fill={COLORS[1]}
+                    fillOpacity={0.2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+
+          <DashboardPanel>
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold">Predicted Trends</h3>
+              <p className="text-sm text-muted-foreground">
+                3-month health metric predictions
+              </p>
+            </div>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    type="category"
+                    allowDuplicatedCategory={false}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  {healthTrends.predictions.map((prediction, index) => (
+                    <Line
+                      key={prediction.testName}
+                      data={prediction.predictions}
+                      name={`${prediction.testName} (Predicted)`}
+                      type="monotone"
+                      dataKey="value"
+                      stroke={COLORS[index % COLORS.length]}
+                      strokeDasharray="5 5"
+                      strokeWidth={2}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+        </DashboardLayout>
+      </div>
     </div>
   );
 }

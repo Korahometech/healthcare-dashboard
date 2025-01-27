@@ -16,16 +16,47 @@ export const patients = pgTable("patients", {
   phone: text("phone"),
   dateOfBirth: date("date_of_birth"),
   gender: text("gender"),
+
+  // Emergency Contact
+  emergencyContactName: text("emergency_contact_name"),
+  emergencyContactPhone: text("emergency_contact_phone"),
+  emergencyContactRelation: text("emergency_contact_relation"),
+
+  // Insurance Information
+  insuranceProvider: text("insurance_provider"),
+  insurancePolicyNumber: text("insurance_policy_number"),
+  insuranceGroupNumber: text("insurance_group_number"),
+
+  // Primary Care Information
+  primaryPhysicianName: text("primary_physician_name"),
+  primaryPhysicianContact: text("primary_physician_contact"),
+
   // Essential health information
   bloodType: text("blood_type"),
   height: integer("height"),
   weight: integer("weight"),
+  allergies: text("allergies").array(),
+
+  // Medical History
+  chronicConditions: text("chronic_conditions").array(),
+  surgicalHistory: jsonb("surgical_history"),
+  familyHistory: jsonb("family_history"),
+  vaccinationHistory: jsonb("vaccination_history"),
+
   // Basic health indicators
   healthConditions: text("health_conditions").array(),
   medications: text("medications").array(),
+
   // Simple lifestyle indicators
   smokingStatus: text("smoking_status"),
   exerciseFrequency: text("exercise_frequency"),
+
+  // Preferences
+  preferredPharmacy: text("preferred_pharmacy"),
+  preferredCommunication: text("preferred_communication"),
+  languagePreference: text("language_preference"),
+
+  // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
 });
@@ -35,21 +66,19 @@ export const insertPatientSchema = createInsertSchema(patients).extend({
   bloodType: z.string().nullable().optional(),
   healthConditions: z.array(z.string()).nullable().optional(),
   medications: z.array(z.string()).nullable().optional(),
+  allergies: z.array(z.string()).nullable().optional(),
+  chronicConditions: z.array(z.string()).nullable().optional(),
+  surgicalHistory: z.record(z.string(), z.any()).nullable().optional(),
+  familyHistory: z.record(z.string(), z.any()).nullable().optional(),
+  vaccinationHistory: z.record(z.string(), z.any()).nullable().optional(),
   smokingStatus: z.enum(['never', 'former', 'current']).nullable().optional(),
   exerciseFrequency: z.enum(['never', 'rarely', 'moderate', 'regular']).nullable().optional(),
+  preferredCommunication: z.enum(['email', 'phone', 'sms']).nullable().optional(),
   height: z.number().int().positive().nullable().optional(),
   weight: z.number().int().positive().nullable().optional(),
 });
 
-export const selectPatientSchema = createSelectSchema(patients).extend({
-  bloodType: z.string().nullable().optional(),
-  healthConditions: z.array(z.string()).nullable().optional(),
-  medications: z.array(z.string()).nullable().optional(),
-  smokingStatus: z.enum(['never', 'former', 'current']).nullable().optional(),
-  exerciseFrequency: z.enum(['never', 'rarely', 'moderate', 'regular']).nullable().optional(),
-  height: z.number().int().positive().nullable().optional(),
-  weight: z.number().int().positive().nullable().optional(),
-});
+export const selectPatientSchema = createSelectSchema(patients);
 
 export const appointments = pgTable("appointments", {
   id: serial("id").primaryKey(),

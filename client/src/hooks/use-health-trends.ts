@@ -5,7 +5,10 @@ import {
   analyzeLabResultsTrends,
   calculateHealthRiskFactors,
   calculateHealthConditionsDistribution,
-  calculateBMIDistribution
+  calculateBMIDistribution,
+  calculateMetricCorrelation,
+  calculateHealthTrends,
+  predictHealthTrends
 } from "@/lib/analytics";
 
 export function useHealthTrends(patientId?: number) {
@@ -19,12 +22,18 @@ export function useHealthTrends(patientId?: number) {
       const riskFactors = calculateHealthRiskFactors(patients, labResults);
       const conditionsDistribution = calculateHealthConditionsDistribution(patients);
       const bmiDistribution = calculateBMIDistribution(patients);
+      const metricCorrelations = calculateMetricCorrelation(patients, labResults);
+      const detailedTrends = calculateHealthTrends(patients, labResults);
+      const predictions = predictHealthTrends(labResults);
 
       return {
         labTrends,
         riskFactors,
         conditionsDistribution,
-        bmiDistribution
+        bmiDistribution,
+        metricCorrelations,
+        detailedTrends,
+        predictions
       };
     },
     enabled: !!(labResults && patients),
