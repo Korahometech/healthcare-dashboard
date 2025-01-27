@@ -4,7 +4,7 @@ import { usePatients } from "@/hooks/use-patients";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,11 +35,23 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
 import { insertAppointmentSchema } from "@db/schema";
+import { z } from "zod";
+
+// Extend the appointment schema to include teleconsultation fields
+const createAppointmentSchema = insertAppointmentSchema.extend({
+  isTeleconsultation: z.boolean().optional(),
+  meetingUrl: z.string().url().optional(),
+  duration: z.number().min(15).max(120).optional(),
+});
+
+type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
 
 export default function Appointments() {
   const [open, setOpen] = useState(false);
@@ -47,15 +59,19 @@ export default function Appointments() {
   const { patients } = usePatients();
   const { toast } = useToast();
 
-  const form = useForm<InsertAppointment>({
-    resolver: zodResolver(insertAppointmentSchema),
+  const form = useForm<CreateAppointmentInput>({
+    resolver: zodResolver(createAppointmentSchema),
     defaultValues: {
       status: "scheduled",
       notes: "",
+      isTeleconsultation: false,
+      duration: 30,
     },
   });
 
-  const onSubmit = async (values: InsertAppointment) => {
+  const isTeleconsultation = form.watch("isTeleconsultation");
+
+  const onSubmit = async (values: CreateAppointmentInput) => {
     try {
       await createAppointment(values);
       setOpen(false);
@@ -81,7 +97,7 @@ export default function Appointments() {
           <DialogTrigger asChild>
             <Button>Add Appointment</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>New Appointment</DialogTitle>
             </DialogHeader>
@@ -163,6 +179,73 @@ export default function Appointments() {
                 />
                 <FormField
                   control={form.control}
+                  name="isTeleconsultation"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          Teleconsultation
+                        </FormLabel>
+                        <div className="text-sm text-muted-foreground">
+                          Schedule a video consultation
+                        </div>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {isTeleconsultation && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="meetingUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Meeting URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://meet.example.com/room" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="duration"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Duration (minutes)</FormLabel>
+                          <Select
+                            onValueChange={(value) =>
+                              field.onChange(parseInt(value))
+                            }
+                            defaultValue={field.value?.toString()}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select duration" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="15">15 minutes</SelectItem>
+                              <SelectItem value="30">30 minutes</SelectItem>
+                              <SelectItem value="45">45 minutes</SelectItem>
+                              <SelectItem value="60">1 hour</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+                <FormField
+                  control={form.control}
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
@@ -184,7 +267,7 @@ export default function Appointments() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {appointments.map((appointment: SelectAppointment & { patient?: { name: string } }) => (
+        {appointments.map((appointment: SelectAppointment & { patient?: { name: string }, teleconsultation?: { meetingUrl: string, duration: number } }) => (
           <Card key={appointment.id} className="space-y-4 p-6">
             <div className="flex justify-between items-start">
               <div>
@@ -194,6 +277,14 @@ export default function Appointments() {
                 <p className="text-sm text-muted-foreground">
                   {format(new Date(appointment.date), "PPP")}
                 </p>
+                {appointment.teleconsultation && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                    <Video className="h-4 w-4" />
+                    <span>
+                      {appointment.teleconsultation.duration} min consultation
+                    </span>
+                  </div>
+                )}
               </div>
               <Select
                 defaultValue={appointment.status}
@@ -215,6 +306,16 @@ export default function Appointments() {
               <p className="text-sm text-muted-foreground">
                 {appointment.notes}
               </p>
+            )}
+            {appointment.teleconsultation && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => window.open(appointment.teleconsultation?.meetingUrl, '_blank')}
+              >
+                <Video className="mr-2 h-4 w-4" />
+                Join Meeting
+              </Button>
             )}
           </Card>
         ))}

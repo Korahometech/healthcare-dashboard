@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { appointments, patients, medicalRecords, labResults, prescriptions, medicalHistory } from "@db/schema";
+import { appointments, patients, medicalRecords, labResults, prescriptions, medicalHistory, teleconsultations } from "@db/schema";
 import { eq } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
@@ -117,14 +117,44 @@ export function registerRoutes(app: Express): Server {
     const allAppointments = await db.query.appointments.findMany({
       with: {
         patient: true,
+        teleconsultation: true,
       },
     });
     res.json(allAppointments);
   });
 
   app.post("/api/appointments", async (req, res) => {
-    const appointment = await db.insert(appointments).values(req.body).returning();
-    res.json(appointment[0]);
+    const { isTeleconsultation, meetingUrl, duration, ...appointmentData } = req.body;
+
+    // Start a transaction to create both appointment and teleconsultation
+    const appointment = await db.transaction(async (tx) => {
+      const [newAppointment] = await tx
+        .insert(appointments)
+        .values(appointmentData)
+        .returning();
+
+      if (isTeleconsultation) {
+        await tx.insert(teleconsultations).values({
+          appointmentId: newAppointment.id,
+          meetingUrl,
+          duration,
+          startTime: new Date(appointmentData.date),
+          status: "scheduled",
+        });
+      }
+
+      return newAppointment;
+    });
+
+    const appointmentWithDetails = await db.query.appointments.findFirst({
+      where: eq(appointments.id, appointment.id),
+      with: {
+        patient: true,
+        teleconsultation: true,
+      },
+    });
+
+    res.json(appointmentWithDetails);
   });
 
   app.put("/api/appointments/:id/status", async (req, res) => {
@@ -135,6 +165,30 @@ export function registerRoutes(app: Express): Server {
       .where(eq(appointments.id, parseInt(req.params.id)))
       .returning();
     res.json(appointment[0]);
+  });
+
+  // Teleconsultation API
+  app.get("/api/teleconsultations", async (req, res) => {
+    const allConsultations = await db.query.teleconsultations.findMany({
+      with: {
+        appointment: {
+          with: {
+            patient: true,
+          },
+        },
+      },
+    });
+    res.json(allConsultations);
+  });
+
+  app.put("/api/teleconsultations/:id", async (req, res) => {
+    const { status, endTime } = req.body;
+    const consultation = await db
+      .update(teleconsultations)
+      .set({ status, endTime })
+      .where(eq(teleconsultations.id, parseInt(req.params.id)))
+      .returning();
+    res.json(consultation[0]);
   });
 
   const httpServer = createServer(app);

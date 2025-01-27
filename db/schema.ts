@@ -37,7 +37,7 @@ export const medicalRecords = pgTable("medical_records", {
   fileType: text("file_type").notNull(),
   fileName: text("file_name").notNull(),
   notes: text("notes"),
-  recordType: text("record_type").notNull(), 
+  recordType: text("record_type").notNull(),
   recordDate: timestamp("record_date").notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow(),
 });
@@ -47,9 +47,9 @@ export const labResults = pgTable("lab_results", {
   patientId: integer("patient_id").references(() => patients.id),
   testName: text("test_name").notNull(),
   testDate: timestamp("test_date").notNull(),
-  results: jsonb("results").notNull(), 
-  referenceRange: jsonb("reference_range"), 
-  status: text("status").notNull(), 
+  results: jsonb("results").notNull(),
+  referenceRange: jsonb("reference_range"),
+  status: text("status").notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -62,7 +62,7 @@ export const prescriptions = pgTable("prescriptions", {
   frequency: text("frequency").notNull(),
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date"),
-  status: text("status").notNull(), 
+  status: text("status").notNull(),
   prescribedBy: text("prescribed_by").notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -71,15 +71,26 @@ export const prescriptions = pgTable("prescriptions", {
 export const medicalHistory = pgTable("medical_history", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id),
-  eventType: text("event_type").notNull(), 
+  eventType: text("event_type").notNull(),
   eventDate: timestamp("event_date").notNull(),
   description: text("description").notNull(),
-  severity: text("severity"), 
+  severity: text("severity"),
   outcome: text("outcome"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Relations
+export const teleconsultations = pgTable("teleconsultations", {
+  id: serial("id").primaryKey(),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  meetingUrl: text("meeting_url").notNull(),
+  status: text("status").notNull().default("scheduled"), 
+  duration: integer("duration").notNull(), 
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const patientsRelations = relations(patients, ({ many }) => ({
   appointments: many(appointments),
   medicalRecords: many(medicalRecords),
@@ -92,6 +103,10 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
   patient: one(patients, {
     fields: [appointments.patientId],
     references: [patients.id],
+  }),
+  teleconsultation: one(teleconsultations, {
+    fields: [appointments.id],
+    references: [teleconsultations.appointmentId],
   }),
 }));
 
@@ -123,7 +138,6 @@ export const medicalHistoryRelations = relations(medicalHistory, ({ one }) => ({
   }),
 }));
 
-// Schema Types
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export type InsertUser = typeof users.$inferInsert;
@@ -158,3 +172,8 @@ export const insertMedicalHistorySchema = createInsertSchema(medicalHistory);
 export const selectMedicalHistorySchema = createSelectSchema(medicalHistory);
 export type InsertMedicalHistory = typeof medicalHistory.$inferInsert;
 export type SelectMedicalHistory = typeof medicalHistory.$inferSelect;
+
+export const insertTeleconsultationSchema = createInsertSchema(teleconsultations);
+export const selectTeleconsultationSchema = createSelectSchema(teleconsultations);
+export type InsertTeleconsultation = typeof teleconsultations.$inferInsert;
+export type SelectTeleconsultation = typeof teleconsultations.$inferSelect;

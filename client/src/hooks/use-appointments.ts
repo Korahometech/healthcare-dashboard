@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
 
+type CreateAppointmentInput = InsertAppointment & {
+  isTeleconsultation?: boolean;
+  meetingUrl?: string;
+  duration?: number;
+};
+
 export function useAppointments() {
   const queryClient = useQueryClient();
 
@@ -9,7 +15,7 @@ export function useAppointments() {
   });
 
   const createAppointment = useMutation({
-    mutationFn: async (appointment: InsertAppointment) => {
+    mutationFn: async (appointment: CreateAppointmentInput) => {
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
