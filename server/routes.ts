@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { appointments, patients, labResults, teleconsultations } from "@db/schema";
+import { appointments, patients, labResults, teleconsultations, carePlans, treatments, medications, healthGoals, progressEntries } from "@db/schema";
 import { eq } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
@@ -131,6 +131,82 @@ export function registerRoutes(app: Express): Server {
       .where(eq(teleconsultations.id, parseInt(req.params.id)))
       .returning();
     res.json(consultation[0]);
+  });
+
+  // Care Plans API
+  app.get("/api/patients/:patientId/care-plans", async (req, res) => {
+    const carePlansList = await db.query.carePlans.findMany({
+      where: eq(carePlans.patientId, parseInt(req.params.patientId)),
+      with: {
+        treatments: true,
+        medications: true,
+        healthGoals: {
+          with: {
+            progressEntries: true,
+          },
+        },
+      },
+    });
+    res.json(carePlansList);
+  });
+
+  app.post("/api/patients/:patientId/care-plans", async (req, res) => {
+    const carePlan = await db
+      .insert(carePlans)
+      .values({
+        ...req.body,
+        patientId: parseInt(req.params.patientId),
+      })
+      .returning();
+    res.json(carePlan[0]);
+  });
+
+  // Treatments API
+  app.post("/api/care-plans/:carePlanId/treatments", async (req, res) => {
+    const treatment = await db
+      .insert(treatments)
+      .values({
+        ...req.body,
+        carePlanId: parseInt(req.params.carePlanId),
+      })
+      .returning();
+    res.json(treatment[0]);
+  });
+
+  // Medications API
+  app.post("/api/care-plans/:carePlanId/medications", async (req, res) => {
+    const medication = await db
+      .insert(medications)
+      .values({
+        ...req.body,
+        carePlanId: parseInt(req.params.carePlanId),
+      })
+      .returning();
+    res.json(medication[0]);
+  });
+
+  // Health Goals API
+  app.post("/api/care-plans/:carePlanId/goals", async (req, res) => {
+    const goal = await db
+      .insert(healthGoals)
+      .values({
+        ...req.body,
+        carePlanId: parseInt(req.params.carePlanId),
+      })
+      .returning();
+    res.json(goal[0]);
+  });
+
+  // Progress Entries API
+  app.post("/api/goals/:goalId/progress", async (req, res) => {
+    const entry = await db
+      .insert(progressEntries)
+      .values({
+        ...req.body,
+        healthGoalId: parseInt(req.params.goalId),
+      })
+      .returning();
+    res.json(entry[0]);
   });
 
   const httpServer = createServer(app);

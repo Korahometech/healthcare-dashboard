@@ -161,3 +161,109 @@ export type SelectTeleconsultation = z.infer<typeof selectTeleconsultationSchema
 
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
 export type SelectPatient = z.infer<typeof selectPatientSchema>;
+
+
+export const carePlans = pgTable("care_plans", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+export const treatments = pgTable("treatments", {
+  id: serial("id").primaryKey(),
+  carePlanId: integer("care_plan_id").references(() => carePlans.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  frequency: text("frequency").notNull(), // daily, weekly, monthly
+  duration: integer("duration"), // in minutes
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  status: text("status").notNull().default("scheduled"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const medications = pgTable("medications", {
+  id: serial("id").primaryKey(),
+  carePlanId: integer("care_plan_id").references(() => carePlans.id),
+  name: text("name").notNull(),
+  dosage: text("dosage").notNull(),
+  frequency: text("frequency").notNull(),
+  instructions: text("instructions"),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  reminderEnabled: boolean("reminder_enabled").default(true),
+  reminderTime: text("reminder_time").array(), // Array of times for reminders
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const healthGoals = pgTable("health_goals", {
+  id: serial("id").primaryKey(),
+  carePlanId: integer("care_plan_id").references(() => carePlans.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  targetValue: integer("target_value"),
+  unit: text("unit"),
+  deadline: date("deadline"),
+  status: text("status").notNull().default("in_progress"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const progressEntries = pgTable("progress_entries", {
+  id: serial("id").primaryKey(),
+  healthGoalId: integer("health_goal_id").references(() => healthGoals.id),
+  value: integer("value").notNull(),
+  notes: text("notes"),
+  entryDate: timestamp("entry_date").notNull().defaultNow(),
+});
+
+// Relations
+export const carePlansRelations = relations(carePlans, ({ one, many }) => ({
+  patient: one(patients, {
+    fields: [carePlans.patientId],
+    references: [patients.id],
+  }),
+  treatments: many(treatments),
+  medications: many(medications),
+  healthGoals: many(healthGoals),
+}));
+
+export const healthGoalsRelations = relations(healthGoals, ({ one, many }) => ({
+  carePlan: one(carePlans, {
+    fields: [healthGoals.carePlanId],
+    references: [carePlans.id],
+  }),
+  progressEntries: many(progressEntries),
+}));
+
+// Schemas
+export const insertCarePlanSchema = createInsertSchema(carePlans);
+export const selectCarePlanSchema = createSelectSchema(carePlans);
+export type InsertCarePlan = z.infer<typeof insertCarePlanSchema>;
+export type SelectCarePlan = z.infer<typeof selectCarePlanSchema>;
+
+export const insertTreatmentSchema = createInsertSchema(treatments);
+export const selectTreatmentSchema = createSelectSchema(treatments);
+export type InsertTreatment = z.infer<typeof insertTreatmentSchema>;
+export type SelectTreatment = z.infer<typeof selectTreatmentSchema>;
+
+export const insertMedicationSchema = createInsertSchema(medications);
+export const selectMedicationSchema = createSelectSchema(medications);
+export type InsertMedication = z.infer<typeof insertMedicationSchema>;
+export type SelectMedication = z.infer<typeof selectMedicationSchema>;
+
+export const insertHealthGoalSchema = createInsertSchema(healthGoals);
+export const selectHealthGoalSchema = createSelectSchema(healthGoals);
+export type InsertHealthGoal = z.infer<typeof insertHealthGoalSchema>;
+export type SelectHealthGoal = z.infer<typeof selectHealthGoalSchema>;
+
+export const insertProgressEntrySchema = createInsertSchema(progressEntries);
+export const selectProgressEntrySchema = createSelectSchema(progressEntries);
+export type InsertProgressEntry = z.infer<typeof insertProgressEntrySchema>;
+export type SelectProgressEntry = z.infer<typeof selectProgressEntrySchema>;

@@ -9,6 +9,7 @@ import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Appointments from "@/pages/appointments";
 import Patients from "@/pages/patients";
+import CarePlans from "@/pages/care-plans";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/ui/layout";
 
@@ -34,6 +35,7 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/appointments" component={Appointments} />
         <Route path="/patients" component={Patients} />
+        <Route path="/care-plans" component={CarePlans} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
