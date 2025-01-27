@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, date, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, date, jsonb, real } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
@@ -115,11 +115,6 @@ export const teleconsultations = pgTable("teleconsultations", {
 });
 
 // Relations
-export const patientsRelations = relations(patients, ({ many }) => ({
-  appointments: many(appointments),
-  labResults: many(labResults),
-}));
-
 export const appointmentsRelations = relations(appointments, ({ one }) => ({
   patient: one(patients, {
     fields: [appointments.patientId],
@@ -267,3 +262,116 @@ export const insertProgressEntrySchema = createInsertSchema(progressEntries);
 export const selectProgressEntrySchema = createSelectSchema(progressEntries);
 export type InsertProgressEntry = z.infer<typeof insertProgressEntrySchema>;
 export type SelectProgressEntry = z.infer<typeof selectProgressEntrySchema>;
+
+
+// New tables for personalized medicine
+
+export const geneticProfiles = pgTable("genetic_profiles", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  dnaSequenceData: jsonb("dna_sequence_data"),
+  geneticMarkers: jsonb("genetic_markers"),
+  ancestryInformation: jsonb("ancestry_information"),
+  diseaseRiskFactors: jsonb("disease_risk_factors"),
+  drugResponseMarkers: jsonb("drug_response_markers"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  reportDate: date("report_date").notNull(),
+  laboratoryInfo: text("laboratory_info"),
+  methodologyUsed: text("methodology_used"),
+  interpretationNotes: text("interpretation_notes"),
+});
+
+export const biomarkerData = pgTable("biomarker_data", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  biomarkerType: text("biomarker_type").notNull(),
+  value: real("value").notNull(),
+  unit: text("unit").notNull(),
+  referenceRange: jsonb("reference_range"),
+  collectionDate: timestamp("collection_date").notNull(),
+  testMethod: text("test_method"),
+  laboratoryInfo: text("laboratory_info"),
+  interpretationNotes: text("interpretation_notes"),
+  status: text("status").notNull(),
+});
+
+export const treatmentResponses = pgTable("treatment_responses", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  treatmentId: integer("treatment_id").references(() => treatments.id),
+  responseLevel: text("response_level").notNull(), // positive, negative, neutral
+  sideEffects: text("side_effects").array(),
+  efficacyScore: integer("efficacy_score"), // 1-10
+  tolerabilityScore: integer("tolerability_score"), // 1-10
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  biomarkerChanges: jsonb("biomarker_changes"),
+  notes: text("notes"),
+});
+
+export const environmentalFactors = pgTable("environmental_factors", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  factorType: text("factor_type").notNull(), // air quality, diet, lifestyle, etc.
+  exposure: jsonb("exposure").notNull(),
+  intensity: text("intensity").notNull(), // low, medium, high
+  duration: integer("duration"), // in hours
+  recordDate: timestamp("record_date").notNull(),
+  location: text("location"),
+  source: text("source"),
+  mitigationStrategies: text("mitigation_strategies").array(),
+  impactAssessment: text("impact_assessment"),
+});
+
+export const riskAssessments = pgTable("risk_assessments", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  condition: text("condition").notNull(),
+  riskLevel: text("risk_level").notNull(), // low, medium, high
+  geneticFactors: jsonb("genetic_factors"),
+  environmentalFactors: jsonb("environmental_factors"),
+  lifestyleFactors: jsonb("lifestyle_factors"),
+  biomarkerFactors: jsonb("biomarker_factors"),
+  recommendedActions: text("recommended_actions").array(),
+  assessmentDate: timestamp("assessment_date").notNull(),
+  nextReviewDate: date("next_review_date"),
+  assessedBy: text("assessed_by"),
+  notes: text("notes"),
+});
+
+// Add relations
+export const patientsRelations = relations(patients, ({ many }) => ({
+  appointments: many(appointments),
+  labResults: many(labResults),
+  geneticProfiles: many(geneticProfiles),
+  biomarkerData: many(biomarkerData),
+  treatmentResponses: many(treatmentResponses),
+  environmentalFactors: many(environmentalFactors),
+  riskAssessments: many(riskAssessments),
+}));
+
+// Create schemas for new tables
+export const insertGeneticProfileSchema = createInsertSchema(geneticProfiles);
+export const selectGeneticProfileSchema = createSelectSchema(geneticProfiles);
+export type InsertGeneticProfile = z.infer<typeof insertGeneticProfileSchema>;
+export type SelectGeneticProfile = z.infer<typeof selectGeneticProfileSchema>;
+
+export const insertBiomarkerDataSchema = createInsertSchema(biomarkerData);
+export const selectBiomarkerDataSchema = createSelectSchema(biomarkerData);
+export type InsertBiomarkerData = z.infer<typeof insertBiomarkerDataSchema>;
+export type SelectBiomarkerData = z.infer<typeof selectBiomarkerDataSchema>;
+
+export const insertTreatmentResponseSchema = createInsertSchema(treatmentResponses);
+export const selectTreatmentResponseSchema = createSelectSchema(treatmentResponses);
+export type InsertTreatmentResponse = z.infer<typeof insertTreatmentResponseSchema>;
+export type SelectTreatmentResponse = z.infer<typeof selectTreatmentResponseSchema>;
+
+export const insertEnvironmentalFactorSchema = createInsertSchema(environmentalFactors);
+export const selectEnvironmentalFactorSchema = createSelectSchema(environmentalFactors);
+export type InsertEnvironmentalFactor = z.infer<typeof insertEnvironmentalFactorSchema>;
+export type SelectEnvironmentalFactor = z.infer<typeof selectEnvironmentalFactorSchema>;
+
+export const insertRiskAssessmentSchema = createInsertSchema(riskAssessments);
+export const selectRiskAssessmentSchema = createSelectSchema(riskAssessments);
+export type InsertRiskAssessment = z.infer<typeof insertRiskAssessmentSchema>;
+export type SelectRiskAssessment = z.infer<typeof selectRiskAssessmentSchema>;

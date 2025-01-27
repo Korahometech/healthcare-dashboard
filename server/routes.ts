@@ -2,7 +2,22 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { appointments, patients, labResults, teleconsultations, carePlans, treatments, medications, healthGoals, progressEntries } from "@db/schema";
+import { 
+  appointments, 
+  patients, 
+  labResults, 
+  teleconsultations, 
+  carePlans, 
+  treatments, 
+  medications, 
+  healthGoals, 
+  progressEntries,
+  geneticProfiles,
+  biomarkerData,
+  treatmentResponses,
+  environmentalFactors,
+  riskAssessments
+} from "@db/schema";
 import { eq } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
@@ -207,6 +222,151 @@ export function registerRoutes(app: Express): Server {
       })
       .returning();
     res.json(entry[0]);
+  });
+
+  // Genetic Profiles API
+  app.get("/api/genetic-profiles", async (req, res) => {
+    try {
+      const profiles = await db.query.geneticProfiles.findMany({
+        with: {
+          patient: true,
+        },
+      });
+      res.json(profiles);
+    } catch (error: any) {
+      console.error('Error fetching genetic profiles:', error);
+      res.status(500).json({
+        error: 'Failed to fetch genetic profiles',
+        details: error.message
+      });
+    }
+  });
+
+  app.get("/api/patients/:patientId/genetic-profiles", async (req, res) => {
+    try {
+      const profiles = await db.query.geneticProfiles.findMany({
+        where: eq(geneticProfiles.patientId, parseInt(req.params.patientId)),
+      });
+      res.json(profiles);
+    } catch (error: any) {
+      console.error('Error fetching patient genetic profiles:', error);
+      res.status(500).json({
+        error: 'Failed to fetch patient genetic profiles',
+        details: error.message
+      });
+    }
+  });
+
+  app.post("/api/genetic-profiles", async (req, res) => {
+    try {
+      const profile = await db
+        .insert(geneticProfiles)
+        .values(req.body)
+        .returning();
+      res.json(profile[0]);
+    } catch (error: any) {
+      console.error('Error creating genetic profile:', error);
+      res.status(500).json({
+        error: 'Failed to create genetic profile',
+        details: error.message
+      });
+    }
+  });
+
+  // Biomarker Data API
+  app.get("/api/patients/:patientId/biomarkers", async (req, res) => {
+    try {
+      const biomarkers = await db.query.biomarkerData.findMany({
+        where: eq(biomarkerData.patientId, parseInt(req.params.patientId)),
+      });
+      res.json(biomarkers);
+    } catch (error: any) {
+      console.error('Error fetching biomarker data:', error);
+      res.status(500).json({
+        error: 'Failed to fetch biomarker data',
+        details: error.message
+      });
+    }
+  });
+
+  app.post("/api/biomarkers", async (req, res) => {
+    try {
+      const biomarker = await db
+        .insert(biomarkerData)
+        .values(req.body)
+        .returning();
+      res.json(biomarker[0]);
+    } catch (error: any) {
+      console.error('Error creating biomarker data:', error);
+      res.status(500).json({
+        error: 'Failed to create biomarker data',
+        details: error.message
+      });
+    }
+  });
+
+  // Treatment Responses API
+  app.get("/api/patients/:patientId/treatment-responses", async (req, res) => {
+    try {
+      const responses = await db.query.treatmentResponses.findMany({
+        where: eq(treatmentResponses.patientId, parseInt(req.params.patientId)),
+      });
+      res.json(responses);
+    } catch (error: any) {
+      console.error('Error fetching treatment responses:', error);
+      res.status(500).json({
+        error: 'Failed to fetch treatment responses',
+        details: error.message
+      });
+    }
+  });
+
+  app.post("/api/treatment-responses", async (req, res) => {
+    try {
+      const response = await db
+        .insert(treatmentResponses)
+        .values(req.body)
+        .returning();
+      res.json(response[0]);
+    } catch (error: any) {
+      console.error('Error creating treatment response:', error);
+      res.status(500).json({
+        error: 'Failed to create treatment response',
+        details: error.message
+      });
+    }
+  });
+
+  // Risk Assessments API
+  app.get("/api/patients/:patientId/risk-assessments", async (req, res) => {
+    try {
+      const assessments = await db.query.riskAssessments.findMany({
+        where: eq(riskAssessments.patientId, parseInt(req.params.patientId)),
+      });
+      res.json(assessments);
+    } catch (error: any) {
+      console.error('Error fetching risk assessments:', error);
+      res.status(500).json({
+        error: 'Failed to fetch risk assessments',
+        details: error.message
+      });
+    }
+  });
+
+  app.post("/api/risk-assessments", async (req, res) => {
+    try {
+      const assessment = await db
+        .insert(riskAssessments)
+        .values(req.body)
+        .returning();
+      res.json(assessment[0]);
+    } catch (error: any) {
+      console.error('Error creating risk assessment:', error);
+      res.status(500).json({
+        error: 'Failed to create risk assessment',
+        details: error.message
+      });
+    }
   });
 
   const httpServer = createServer(app);
