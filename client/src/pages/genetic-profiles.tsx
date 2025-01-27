@@ -33,6 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { insertGeneticProfileSchema } from "@db/schema";
 import type { InsertGeneticProfile } from "@db/schema";
+import { InsightsExplainer } from "@/components/genetic-insights/InsightsExplainer";
 
 type GeneticProfileFormValues = Omit<InsertGeneticProfile, 'dnaSequenceData' | 'geneticMarkers' | 'ancestryInformation' | 'diseaseRiskFactors' | 'drugResponseMarkers'> & {
   dnaSequenceData?: Record<string, unknown>;
@@ -203,101 +204,25 @@ export default function GeneticProfiles() {
         </Card>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Dna className="h-5 w-5" />
-                Genetic Risk Factors
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {selectedPatientId ? (
-                  geneticProfiles.length > 0 ? (
-                    geneticProfiles.map((profile) => (
-                      <div key={profile.id} className="space-y-2">
-                        <p className="font-medium">Report from {format(new Date(profile.reportDate), 'PPP')}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Lab: {profile.laboratoryInfo}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Method: {profile.methodologyUsed}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No genetic risk factors found. Upload genetic data to view insights.
-                    </p>
-                  )
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Select a patient to view their genetic risk factors.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Drug Response Profile
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {selectedPatientId ? (
-                  geneticProfiles.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Analysis of drug response markers based on genetic data.
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No drug response data found. Upload genetic data to view insights.
-                    </p>
-                  )
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Select a patient to view their drug response profile.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                Health Alerts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {selectedPatientId ? (
-                  geneticProfiles.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Health alerts and recommendations based on genetic analysis.
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No health alerts found. Upload genetic data to view potential risks.
-                    </p>
-                  )
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Select a patient to view their health alerts.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {selectedPatientId && geneticProfiles.length > 0 ? (
+            <InsightsExplainer profile={geneticProfiles[0]} />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Dna className="h-5 w-5" />
+                  Genetic Insights
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  {selectedPatientId
+                    ? "No genetic data available. Upload genetic data to view personalized insights."
+                    : "Select a patient to view their genetic insights."}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
