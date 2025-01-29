@@ -6,6 +6,7 @@ import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Appointments from "@/pages/appointments";
 import Patients from "@/pages/patients";
+import Doctors from "@/pages/doctors"; // Import the new Doctors page
 import CarePlans from "@/pages/care-plans";
 import GeneticProfiles from "@/pages/genetic-profiles";
 import NotFound from "@/pages/not-found";
@@ -19,6 +20,7 @@ function Router() {
         <Route path="/analytics" component={Analytics} />
         <Route path="/appointments" component={Appointments} />
         <Route path="/patients" component={Patients} />
+        <Route path="/doctors" component={Doctors} /> {/* Add the new doctors route */}
         <Route path="/care-plans" component={CarePlans} />
         <Route path="/genetic-profiles" component={GeneticProfiles} />
         <Route component={NotFound} />
