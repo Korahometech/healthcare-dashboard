@@ -28,7 +28,6 @@ const crypto = {
   },
 };
 
-// extend express user object with our schema
 declare global {
   namespace Express {
     interface User extends SelectUser { }
@@ -42,12 +41,13 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 24 * 60 * 60 * 1000,
       sameSite: 'lax',
       path: '/',
+      httpOnly: true
     },
     store: new MemoryStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
+      checkPeriod: 86400000,
     }),
   };
 
@@ -75,10 +75,12 @@ export function setupAuth(app: Express) {
         if (!user) {
           return done(null, false, { message: "Incorrect username." });
         }
+
         const isMatch = await crypto.compare(password, user.password);
         if (!isMatch) {
           return done(null, false, { message: "Incorrect password." });
         }
+
         return done(null, user);
       } catch (err) {
         console.error('Authentication error:', err);
@@ -113,24 +115,32 @@ export function setupAuth(app: Express) {
     try {
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
-        return res
-          .status(400)
-          .json({ 
-            error: "Invalid input", 
-            details: result.error.issues.map(i => i.message)
-          });
+        return res.status(400).json({ 
+          error: "Invalid input", 
+          details: result.error.issues.map(i => i.message)
+        });
       }
 
       const { username, password } = result.data;
 
+      // Check if username is empty or contains only whitespace
+      if (!username || !username.trim()) {
+        return res.status(400).json({ error: "Username cannot be empty" });
+      }
+
+      // Check if password is too short
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters long" });
+      }
+
       // Check if user already exists
-      const [existingUser] = await db
+      const existingUser = await db
         .select()
         .from(users)
         .where(eq(users.username, username))
         .limit(1);
 
-      if (existingUser) {
+      if (existingUser.length > 0) {
         return res.status(409).json({ error: "Username already exists" });
       }
 
@@ -141,7 +151,7 @@ export function setupAuth(app: Express) {
       const [newUser] = await db
         .insert(users)
         .values({
-          username,
+          username: username.trim(),
           password: hashedPassword,
         })
         .returning();
@@ -153,14 +163,17 @@ export function setupAuth(app: Express) {
           return next(err);
         }
 
-        // Set proper session cookie
-        if (req.session) {
-          req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours
-        }
+        // Ensure session is saved
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session save failed:', err);
+            return next(err);
+          }
 
-        return res.json({
-          message: "Registration successful",
-          user: { id: newUser.id, username: newUser.username },
+          return res.json({
+            message: "Registration successful",
+            user: { id: newUser.id, username: newUser.username }
+          });
         });
       });
     } catch (error) {
@@ -170,14 +183,6 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    const result = insertUserSchema.safeParse(req.body);
-    if (!result.success) {
-      return res.status(400).json({ 
-        error: "Invalid input",
-        details: result.error.issues.map(i => i.message)
-      });
-    }
-
     passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
         console.error('Login error:', err);
@@ -194,21 +199,28 @@ export function setupAuth(app: Express) {
           return next(err);
         }
 
-        // Set proper session cookie
-        if (req.session) {
-          req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours
-        }
+        // Ensure session is saved
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session save failed:', err);
+            return next(err);
+          }
 
-        return res.json({
-          message: "Login successful",
-          user: { id: user.id, username: user.username },
+          return res.json({
+            message: "Login successful",
+            user: { id: user.id, username: user.username }
+          });
         });
       });
     })(req, res, next);
   });
 
   app.post("/api/logout", (req, res) => {
-    const username = req.user?.username;
+    if (!req.user) {
+      return res.status(401).json({ error: "Not logged in" });
+    }
+
+    const username = req.user.username;
     req.logout((err) => {
       if (err) {
         console.error('Logout error:', err);
@@ -231,33 +243,5 @@ export function setupAuth(app: Express) {
       return res.json({ id, username });
     }
     res.status(401).json({ error: "Not authenticated" });
-  });
-
-  app.delete("/api/user", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    try {
-      await db.delete(users).where(eq(users.id, req.user.id));
-
-      req.logout((err) => {
-        if (err) {
-          console.error('Logout after account deletion failed:', err);
-          return res.status(500).json({ error: "Account deleted but logout failed" });
-        }
-
-        req.session.destroy((err) => {
-          if (err) {
-            console.error('Session destruction after account deletion failed:', err);
-            return res.status(500).json({ error: "Account deleted but session cleanup failed" });
-          }
-          res.json({ message: "Account successfully deleted" });
-        });
-      });
-    } catch (error) {
-      console.error('Account deletion error:', error);
-      res.status(500).json({ error: "Failed to delete account" });
-    }
   });
 }
