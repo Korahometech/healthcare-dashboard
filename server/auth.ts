@@ -8,6 +8,7 @@ import { promisify } from "util";
 import { users, insertUserSchema, type SelectUser } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
+import { authLogger, logAuthEvent, AuthEventType, sanitizeError } from "./logger";
 
 const scryptAsync = promisify(scrypt);
 const crypto = {
@@ -66,6 +67,8 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        logAuthEvent(AuthEventType.LOGIN_ATTEMPT, username, { ip: 'unknown', headers: {}, path: '/api/login', method: 'POST' });
+
         const [user] = await db
           .select()
           .from(users)
@@ -73,17 +76,40 @@ export function setupAuth(app: Express) {
           .limit(1);
 
         if (!user) {
+          logAuthEvent(
+            AuthEventType.LOGIN_FAILURE,
+            username,
+            { ip: 'unknown', headers: {}, path: '/api/login', method: 'POST' },
+            'Incorrect username'
+          );
           return done(null, false, { message: "Incorrect username." });
         }
 
         const isMatch = await crypto.compare(password, user.password);
         if (!isMatch) {
+          logAuthEvent(
+            AuthEventType.LOGIN_FAILURE,
+            username,
+            { ip: 'unknown', headers: {}, path: '/api/login', method: 'POST' },
+            'Incorrect password'
+          );
           return done(null, false, { message: "Incorrect password." });
         }
 
+        logAuthEvent(
+          AuthEventType.LOGIN_SUCCESS,
+          username,
+          { ip: 'unknown', headers: {}, path: '/api/login', method: 'POST' }
+        );
         return done(null, user);
       } catch (err) {
         console.error('Authentication error:', err);
+        logAuthEvent(
+          AuthEventType.LOGIN_FAILURE,
+          username,
+          { ip: 'unknown', headers: {}, path: '/api/login', method: 'POST' },
+          sanitizeError(err)
+        );
         return done(err);
       }
     })
@@ -102,19 +128,40 @@ export function setupAuth(app: Express) {
         .limit(1);
 
       if (!user) {
+        logAuthEvent(
+          AuthEventType.UNAUTHORIZED_ACCESS,
+          'unknown',
+          { ip: 'unknown', headers: {}, path: '', method: '' },
+          'User not found during session deserialization'
+        );
         return done(new Error('User not found'));
       }
       done(null, user);
     } catch (err) {
       console.error('Deserialization error:', err);
+      logAuthEvent(
+        AuthEventType.UNAUTHORIZED_ACCESS,
+        'unknown',
+        { ip: 'unknown', headers: {}, path: '', method: '' },
+        sanitizeError(err)
+      );
       done(err);
     }
   });
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      logAuthEvent(AuthEventType.REGISTRATION_ATTEMPT, req.body.username || 'unknown', req);
+
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
+        logAuthEvent(
+          AuthEventType.REGISTRATION_FAILURE,
+          req.body.username || 'unknown',
+          req,
+          'Invalid input',
+          { validationErrors: result.error.issues }
+        );
         return res.status(400).json({ 
           error: "Invalid input", 
           details: result.error.issues.map(i => i.message)
@@ -123,17 +170,28 @@ export function setupAuth(app: Express) {
 
       const { username, password } = result.data;
 
-      // Check if username is empty or contains only whitespace
+      // Validation checks
       if (!username || !username.trim()) {
+        logAuthEvent(
+          AuthEventType.REGISTRATION_FAILURE,
+          username,
+          req,
+          'Empty username'
+        );
         return res.status(400).json({ error: "Username cannot be empty" });
       }
 
-      // Check if password is too short
       if (password.length < 6) {
+        logAuthEvent(
+          AuthEventType.REGISTRATION_FAILURE,
+          username,
+          req,
+          'Password too short'
+        );
         return res.status(400).json({ error: "Password must be at least 6 characters long" });
       }
 
-      // Check if user already exists
+      // Check existing user
       const existingUser = await db
         .select()
         .from(users)
@@ -141,13 +199,16 @@ export function setupAuth(app: Express) {
         .limit(1);
 
       if (existingUser.length > 0) {
+        logAuthEvent(
+          AuthEventType.REGISTRATION_FAILURE,
+          username,
+          req,
+          'Username already exists'
+        );
         return res.status(409).json({ error: "Username already exists" });
       }
 
-      // Hash the password
       const hashedPassword = await crypto.hash(password);
-
-      // Create the new user
       const [newUser] = await db
         .insert(users)
         .values({
@@ -156,17 +217,35 @@ export function setupAuth(app: Express) {
         })
         .returning();
 
-      // Log the user in after registration
+      logAuthEvent(
+        AuthEventType.REGISTRATION_SUCCESS,
+        username,
+        req,
+        undefined,
+        { userId: newUser.id }
+      );
+
       req.login(newUser, (err) => {
         if (err) {
           console.error('Login after registration failed:', err);
+          logAuthEvent(
+            AuthEventType.LOGIN_FAILURE,
+            username,
+            req,
+            'Login after registration failed'
+          );
           return next(err);
         }
 
-        // Ensure session is saved
         req.session.save((err) => {
           if (err) {
             console.error('Session save failed:', err);
+            logAuthEvent(
+              AuthEventType.LOGIN_FAILURE,
+              username,
+              req,
+              'Session save failed'
+            );
             return next(err);
           }
 
@@ -178,6 +257,12 @@ export function setupAuth(app: Express) {
       });
     } catch (error) {
       console.error('Registration error:', error);
+      logAuthEvent(
+        AuthEventType.REGISTRATION_FAILURE,
+        req.body.username || 'unknown',
+        req,
+        sanitizeError(error)
+      );
       next(error);
     }
   });
@@ -186,25 +271,54 @@ export function setupAuth(app: Express) {
     passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
         console.error('Login error:', err);
+        logAuthEvent(
+          AuthEventType.LOGIN_FAILURE,
+          req.body.username || 'unknown',
+          req,
+          sanitizeError(err)
+        );
         return next(err);
       }
 
       if (!user) {
+        logAuthEvent(
+          AuthEventType.LOGIN_FAILURE,
+          req.body.username || 'unknown',
+          req,
+          info.message || 'Login failed'
+        );
         return res.status(401).json({ error: info.message ?? "Login failed" });
       }
 
       req.login(user, (err) => {
         if (err) {
           console.error('Login session creation failed:', err);
+          logAuthEvent(
+            AuthEventType.LOGIN_FAILURE,
+            req.body.username,
+            req,
+            'Session creation failed'
+          );
           return next(err);
         }
 
-        // Ensure session is saved
         req.session.save((err) => {
           if (err) {
             console.error('Session save failed:', err);
+            logAuthEvent(
+              AuthEventType.LOGIN_FAILURE,
+              req.body.username,
+              req,
+              'Session save failed'
+            );
             return next(err);
           }
+
+          logAuthEvent(
+            AuthEventType.LOGIN_SUCCESS,
+            user.username,
+            req
+          );
 
           return res.json({
             message: "Login successful",
@@ -224,14 +338,33 @@ export function setupAuth(app: Express) {
     req.logout((err) => {
       if (err) {
         console.error('Logout error:', err);
+        logAuthEvent(
+          AuthEventType.LOGOUT,
+          username,
+          req,
+          'Logout failed'
+        );
         return res.status(500).json({ error: "Logout failed" });
       }
 
       req.session.destroy((err) => {
         if (err) {
           console.error('Session destruction error:', err);
+          logAuthEvent(
+            AuthEventType.LOGOUT,
+            username,
+            req,
+            'Session cleanup failed'
+          );
           return res.status(500).json({ error: "Session cleanup failed" });
         }
+
+        logAuthEvent(
+          AuthEventType.LOGOUT,
+          username,
+          req
+        );
+
         res.json({ message: `Successfully logged out ${username}` });
       });
     });
@@ -242,6 +375,12 @@ export function setupAuth(app: Express) {
       const { id, username } = req.user;
       return res.json({ id, username });
     }
+    logAuthEvent(
+      AuthEventType.UNAUTHORIZED_ACCESS,
+      'unknown',
+      req,
+      'Not authenticated'
+    );
     res.status(401).json({ error: "Not authenticated" });
   });
 }
