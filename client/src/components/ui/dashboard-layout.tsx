@@ -23,9 +23,8 @@ export function DashboardLayout({
       className={cn("min-h-[600px] rounded-lg", className)}
     >
       {children.map((child, index) => (
-        <>
+        <div key={`panel-group-${index}`}>
           <ResizablePanel
-            key={`panel-${index}`}
             defaultSize={defaultSizes[index]}
             className="p-3"
           >
@@ -34,7 +33,7 @@ export function DashboardLayout({
           {index < children.length - 1 && (
             <ResizableHandle withHandle className="bg-border" />
           )}
-        </>
+        </div>
       ))}
     </ResizablePanelGroup>
   );
