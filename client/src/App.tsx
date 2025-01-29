@@ -4,6 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
+import { useToast } from "@/hooks/use-toast";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
@@ -15,7 +16,17 @@ import NotFound from "@/pages/not-found";
 import Layout from "@/components/ui/layout";
 
 function Router() {
-  const { user, isLoading } = useUser();
+  const { user, isLoading, error } = useUser();
+  const { toast } = useToast();
+
+  // Handle authentication errors
+  if (error) {
+    toast({
+      title: "Authentication Error",
+      description: error.message,
+      variant: "destructive",
+    });
+  }
 
   if (isLoading) {
     return (
@@ -25,10 +36,12 @@ function Router() {
     );
   }
 
+  // If not authenticated, show auth page
   if (!user) {
     return <AuthPage />;
   }
 
+  // If authenticated, show main app layout with routes
   return (
     <Layout>
       <Switch>

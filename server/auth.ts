@@ -44,6 +44,7 @@ export function setupAuth(app: Express) {
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       sameSite: 'lax',
+      path: '/',
     },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
@@ -151,6 +152,12 @@ export function setupAuth(app: Express) {
           console.error('Login after registration failed:', err);
           return next(err);
         }
+
+        // Set proper session cookie
+        if (req.session) {
+          req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours
+        }
+
         return res.json({
           message: "Registration successful",
           user: { id: newUser.id, username: newUser.username },
@@ -181,10 +188,15 @@ export function setupAuth(app: Express) {
         return res.status(401).json({ error: info.message ?? "Login failed" });
       }
 
-      req.logIn(user, (err) => {
+      req.login(user, (err) => {
         if (err) {
           console.error('Login session creation failed:', err);
           return next(err);
+        }
+
+        // Set proper session cookie
+        if (req.session) {
+          req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours
         }
 
         return res.json({
@@ -221,7 +233,6 @@ export function setupAuth(app: Express) {
     res.status(401).json({ error: "Not authenticated" });
   });
 
-  // Delete user account
   app.delete("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
