@@ -3,7 +3,8 @@
     "dashboard": "Dashboard",
     "analytics": "Analytics",
     "appointments": "Appointments",
-    "patients": "Patients"
+    "patients": "Patients",
+    "doctors": "Doctors"
   },
   "actions": {
     "login": "Login",
