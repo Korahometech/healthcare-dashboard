@@ -87,6 +87,13 @@ export function useUser() {
     },
   });
 
+  const deleteAccountMutation = useMutation<RequestResult, Error>({
+    mutationFn: () => handleRequest('/api/user', 'DELETE'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
   return {
     user,
     isLoading,
@@ -94,5 +101,6 @@ export function useUser() {
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,
+    deleteAccount: deleteAccountMutation.mutateAsync,
   };
 }

@@ -38,10 +38,13 @@ declare global {
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || "porygon-supremacy",
+    secret: process.env.REPL_ID || "healthcare-platform-secret",
     resave: false,
     saveUninitialized: false,
-    cookie: {},
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax',
+    },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
@@ -50,6 +53,7 @@ export function setupAuth(app: Express) {
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
     sessionSettings.cookie = {
+      ...sessionSettings.cookie,
       secure: true,
     };
   }
@@ -76,6 +80,7 @@ export function setupAuth(app: Express) {
         }
         return done(null, user);
       } catch (err) {
+        console.error('Authentication error:', err);
         return done(err);
       }
     })
@@ -92,8 +97,13 @@ export function setupAuth(app: Express) {
         .from(users)
         .where(eq(users.id, id))
         .limit(1);
+
+      if (!user) {
+        return done(new Error('User not found'));
+      }
       done(null, user);
     } catch (err) {
+      console.error('Deserialization error:', err);
       done(err);
     }
   });
@@ -104,7 +114,10 @@ export function setupAuth(app: Express) {
       if (!result.success) {
         return res
           .status(400)
-          .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+          .json({ 
+            error: "Invalid input", 
+            details: result.error.issues.map(i => i.message)
+          });
       }
 
       const { username, password } = result.data;
@@ -117,7 +130,7 @@ export function setupAuth(app: Express) {
         .limit(1);
 
       if (existingUser) {
-        return res.status(400).send("Username already exists");
+        return res.status(409).json({ error: "Username already exists" });
       }
 
       // Hash the password
@@ -127,7 +140,7 @@ export function setupAuth(app: Express) {
       const [newUser] = await db
         .insert(users)
         .values({
-          ...result.data,
+          username,
           password: hashedPassword,
         })
         .returning();
@@ -135,6 +148,7 @@ export function setupAuth(app: Express) {
       // Log the user in after registration
       req.login(newUser, (err) => {
         if (err) {
+          console.error('Login after registration failed:', err);
           return next(err);
         }
         return res.json({
@@ -143,6 +157,7 @@ export function setupAuth(app: Express) {
         });
       });
     } catch (error) {
+      console.error('Registration error:', error);
       next(error);
     }
   });
@@ -150,22 +165,25 @@ export function setupAuth(app: Express) {
   app.post("/api/login", (req, res, next) => {
     const result = insertUserSchema.safeParse(req.body);
     if (!result.success) {
-      return res
-        .status(400)
-        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+      return res.status(400).json({ 
+        error: "Invalid input",
+        details: result.error.issues.map(i => i.message)
+      });
     }
 
-    const cb = (err: any, user: Express.User, info: IVerifyOptions) => {
+    passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
+        console.error('Login error:', err);
         return next(err);
       }
 
       if (!user) {
-        return res.status(400).send(info.message ?? "Login failed");
+        return res.status(401).json({ error: info.message ?? "Login failed" });
       }
 
       req.logIn(user, (err) => {
         if (err) {
+          console.error('Login session creation failed:', err);
           return next(err);
         }
 
@@ -174,25 +192,61 @@ export function setupAuth(app: Express) {
           user: { id: user.id, username: user.username },
         });
       });
-    };
-    passport.authenticate("local", cb)(req, res, next);
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res) => {
+    const username = req.user?.username;
     req.logout((err) => {
       if (err) {
-        return res.status(500).send("Logout failed");
+        console.error('Logout error:', err);
+        return res.status(500).json({ error: "Logout failed" });
       }
 
-      res.json({ message: "Logout successful" });
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Session destruction error:', err);
+          return res.status(500).json({ error: "Session cleanup failed" });
+        }
+        res.json({ message: `Successfully logged out ${username}` });
+      });
     });
   });
 
   app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {
-      return res.json(req.user);
+      const { id, username } = req.user;
+      return res.json({ id, username });
+    }
+    res.status(401).json({ error: "Not authenticated" });
+  });
+
+  // Delete user account
+  app.delete("/api/user", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
     }
 
-    res.status(401).send("Not logged in");
+    try {
+      await db.delete(users).where(eq(users.id, req.user.id));
+
+      req.logout((err) => {
+        if (err) {
+          console.error('Logout after account deletion failed:', err);
+          return res.status(500).json({ error: "Account deleted but logout failed" });
+        }
+
+        req.session.destroy((err) => {
+          if (err) {
+            console.error('Session destruction after account deletion failed:', err);
+            return res.status(500).json({ error: "Account deleted but session cleanup failed" });
+          }
+          res.json({ message: "Account successfully deleted" });
+        });
+      });
+    } catch (error) {
+      console.error('Account deletion error:', error);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
   });
 }
