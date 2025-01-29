@@ -65,10 +65,15 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { InsertPatient } from "@db/schema";
 import { insertPatientSchema } from "@db/schema";
+import { Timeline } from "@/components/ui/timeline";
+import { usePatientTimeline } from "@/hooks/use-patient-timeline";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Patients() {
   const [open, setOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<number | null>(null);
   const { patients, createPatient, deletePatient, isLoading } = usePatients();
+  const { timeline, isLoading: isLoadingTimeline } = usePatientTimeline(selectedPatient);
   const { toast } = useToast();
 
   const form = useForm<InsertPatient>({
@@ -585,68 +590,118 @@ export default function Patients() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Blood Type</TableHead>
-                <TableHead>Health Conditions</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {patients.map((patient) => (
-                <TableRow key={patient.id}>
-                  <TableCell className="font-medium">{patient.name}</TableCell>
-                  <TableCell>{patient.email}</TableCell>
-                  <TableCell>{patient.phone}</TableCell>
-                  <TableCell>{patient.bloodType}</TableCell>
-                  <TableCell>{patient.healthConditions?.join(", ")}</TableCell>
-                  <TableCell>
-                    {patient.createdAt &&
-                      format(new Date(patient.createdAt), "PP")}
-                  </TableCell>
-                  <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Remove {patient.name}?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently
-                            delete the patient and all associated records.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(patient.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
+        <div className="space-y-4">
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Blood Type</TableHead>
+                  <TableHead>Health Conditions</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {patients.map((patient) => (
+                  <TableRow
+                    key={patient.id}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedPatient(patient.id)}
+                  >
+                    <TableCell className="font-medium">{patient.name}</TableCell>
+                    <TableCell>{patient.email}</TableCell>
+                    <TableCell>{patient.phone}</TableCell>
+                    <TableCell>{patient.bloodType}</TableCell>
+                    <TableCell>{patient.healthConditions?.join(", ")}</TableCell>
+                    <TableCell>
+                      {patient.createdAt &&
+                        format(new Date(patient.createdAt), "PP")}
+                    </TableCell>
+                    <TableCell>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Remove {patient.name}?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently
+                              delete the patient and all associated records.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(patient.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {selectedPatient && (
+            <div className="rounded-lg border p-6">
+              <Tabs defaultValue="timeline" className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="timeline" className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold">Patient Timeline</h2>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setSelectedPatient(null)}
+                    >
+                      Close
+                    </Button>
+                  </div>
+
+                  {isLoadingTimeline ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : timeline?.length ? (
+                    <Timeline events={timeline} />
+                  ) : (
+                    <p className="text-center text-muted-foreground py-8">
+                      No timeline events found for this patient.
+                    </p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="details">
+                  <div className="space-y-8">
+                    <div className="flex justify-between items-center">
+                      <h1 className="text-3xl font-bold">Patient Details</h1>
+                    </div>
+                    {/* Existing patient details content */}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
         </div>
       )}
     </div>
