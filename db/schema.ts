@@ -77,6 +77,7 @@ export const selectPatientSchema = createSelectSchema(patients);
 export const appointments = pgTable("appointments", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").references(() => patients.id),
+  doctorId: integer("doctor_id").references(() => doctors.id), // Add doctor reference
   date: timestamp("date").notNull(),
   status: text("status").notNull().default("scheduled"),
   notes: text("notes"),
@@ -113,6 +114,10 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
   patient: one(patients, {
     fields: [appointments.patientId],
     references: [patients.id],
+  }),
+  doctor: one(doctors, {
+    fields: [appointments.doctorId],
+    references: [doctors.id],
   }),
   teleconsultation: one(teleconsultations, {
     fields: [appointments.id],
@@ -364,3 +369,48 @@ export const insertRiskAssessmentSchema = createInsertSchema(riskAssessments);
 export const selectRiskAssessmentSchema = createSelectSchema(riskAssessments);
 export type InsertRiskAssessment = z.infer<typeof insertRiskAssessmentSchema>;
 export type SelectRiskAssessment = z.infer<typeof selectRiskAssessmentSchema>;
+
+
+// Add new tables for doctors and specialties
+export const specialties = pgTable("specialties", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const doctors = pgTable("doctors", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  specialtyId: integer("specialty_id").references(() => specialties.id),
+  qualification: text("qualification"),
+  experience: integer("experience"), // in years
+  availableDays: text("available_days").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Add relations
+export const doctorsRelations = relations(doctors, ({ one, many }) => ({
+  specialty: one(specialties, {
+    fields: [doctors.specialtyId],
+    references: [specialties.id],
+  }),
+  appointments: many(appointments),
+}));
+
+
+// Add schemas for new tables
+export const insertSpecialtySchema = createInsertSchema(specialties);
+export const selectSpecialtySchema = createSelectSchema(specialties);
+export type InsertSpecialty = z.infer<typeof insertSpecialtySchema>;
+export type SelectSpecialty = z.infer<typeof selectSpecialtySchema>;
+
+export const insertDoctorSchema = createInsertSchema(doctors).extend({
+  availableDays: z.array(z.string()).nullable().optional(),
+});
+export const selectDoctorSchema = createSelectSchema(doctors);
+export type InsertDoctor = z.infer<typeof insertDoctorSchema>;
+export type SelectDoctor = z.infer<typeof selectDoctorSchema>;

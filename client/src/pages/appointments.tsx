@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAppointments } from "@/hooks/use-appointments";
 import { usePatients } from "@/hooks/use-patients";
+import { useDoctors } from "@/hooks/use-doctors";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -44,8 +45,9 @@ import type { InsertAppointment, SelectAppointment } from "@db/schema";
 import { insertAppointmentSchema } from "@db/schema";
 import { z } from "zod";
 
-// Extend the appointment schema to include teleconsultation fields
+// Update the appointment schema to include doctorId
 const createAppointmentSchema = insertAppointmentSchema.extend({
+  doctorId: z.number(),
   isTeleconsultation: z.boolean().optional(),
   meetingUrl: z.string().url().optional(),
   duration: z.number().min(15).max(120).optional(),
@@ -57,6 +59,7 @@ export default function Appointments() {
   const [open, setOpen] = useState(false);
   const { appointments, createAppointment, updateStatus } = useAppointments();
   const { patients } = usePatients();
+  const { doctors } = useDoctors();
   const { toast } = useToast();
 
   const form = useForm<CreateAppointmentInput>({
@@ -102,10 +105,7 @@ export default function Appointments() {
               <DialogTitle>New Appointment</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="patientId"
@@ -129,6 +129,37 @@ export default function Appointments() {
                               value={patient.id.toString()}
                             >
                               {patient.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="doctorId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Doctor</FormLabel>
+                      <Select
+                        onValueChange={(value) =>
+                          field.onChange(parseInt(value))
+                        }
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select doctor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {doctors.map((doctor) => (
+                            <SelectItem
+                              key={doctor.id}
+                              value={doctor.id.toString()}
+                            >
+                              {`${doctor.name} (${doctor.specialty?.name || 'General'})`}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -167,9 +198,7 @@ export default function Appointments() {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date()
-                            }
+                            disabled={(date) => date < new Date()}
                           />
                         </PopoverContent>
                       </Popover>
@@ -267,13 +296,16 @@ export default function Appointments() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {appointments.map((appointment: SelectAppointment & { patient?: { name: string }, teleconsultation?: { meetingUrl: string, duration: number } }) => (
+        {appointments.map((appointment: SelectAppointment & { patient?: { name: string }, doctor?: { name: string }, teleconsultation?: { meetingUrl: string, duration: number } }) => (
           <Card key={appointment.id} className="space-y-4 p-6">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-semibold">
                   {appointment.patient?.name}
                 </h3>
+                <p className="text-sm text-muted-foreground">
+                  Doctor: {appointment.doctor?.name}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {format(new Date(appointment.date), "PPP")}
                 </p>
