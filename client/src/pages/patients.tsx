@@ -45,36 +45,20 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { InsertPatient } from "@db/schema";
+import { useToast } from "@/hooks/use-toast";
+import type { Patient } from "@db/schema";
 import { insertPatientSchema } from "@db/schema";
 import { Timeline } from "@/components/ui/timeline";
 import { usePatientTimeline } from "@/hooks/use-patient-timeline";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type InsertPatient = Omit<Patient, "id" | "createdAt">;
 
 export default function Patients() {
   const [open, setOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<number | null>(null);
   const { patients, createPatient, deletePatient, isLoading } = usePatients();
-  const { timeline, isLoading: isLoadingTimeline } = usePatientTimeline(selectedPatient);
+  const { data: timeline, isLoading: isLoadingTimeline } = usePatientTimeline(selectedPatient);
   const { toast } = useToast();
 
   const form = useForm<InsertPatient>({
@@ -98,7 +82,11 @@ export default function Patients() {
 
   const onSubmit = async (values: InsertPatient) => {
     try {
-      await createPatient(values);
+      const formattedValues = {
+        ...values,
+        dateOfBirth: values.dateOfBirth ? new Date(values.dateOfBirth).toISOString() : undefined,
+      };
+      await createPatient(formattedValues);
       setOpen(false);
       form.reset();
       toast({
@@ -108,7 +96,7 @@ export default function Patients() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create patient",
         variant: "destructive",
       });
     }
@@ -117,6 +105,7 @@ export default function Patients() {
   const handleDelete = async (id: number) => {
     try {
       await deletePatient(id);
+      setSelectedPatient(null);
       toast({
         title: "Success",
         description: "Patient removed successfully",
@@ -124,7 +113,7 @@ export default function Patients() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to delete patient",
         variant: "destructive",
       });
     }

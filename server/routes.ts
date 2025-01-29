@@ -22,18 +22,70 @@ import { eq } from "drizzle-orm";
 export function registerRoutes(app: Express): Server {
   // Patients API
   app.get("/api/patients", async (req, res) => {
-    const allPatients = await db.query.patients.findMany();
-    res.json(allPatients);
+    try {
+      const allPatients = await db.query.patients.findMany({
+        orderBy: (patients, { desc }) => [desc(patients.createdAt)],
+      });
+      res.json(allPatients);
+    } catch (error: any) {
+      console.error('Error fetching patients:', error);
+      res.status(500).json({
+        error: 'Failed to fetch patients',
+        details: error.message
+      });
+    }
   });
 
   app.post("/api/patients", async (req, res) => {
-    const patient = await db.insert(patients).values(req.body).returning();
-    res.json(patient[0]);
+    try {
+      // Ensure arrays are properly initialized
+      const patientData = {
+        ...req.body,
+        healthConditions: req.body.healthConditions || [],
+        medications: req.body.medications || [],
+        allergies: req.body.allergies || [],
+        chronicConditions: req.body.chronicConditions || [],
+      };
+
+      const patient = await db.insert(patients).values(patientData).returning();
+      res.json(patient[0]);
+    } catch (error: any) {
+      console.error('Error creating patient:', error);
+      res.status(500).json({
+        error: 'Failed to create patient',
+        details: error.message
+      });
+    }
   });
 
   app.delete("/api/patients/:id", async (req, res) => {
-    await db.delete(patients).where(eq(patients.id, parseInt(req.params.id)));
-    res.json({ success: true });
+    try {
+      const patientId = parseInt(req.params.id);
+
+      // Begin transaction to handle cascading deletes
+      await db.transaction(async (tx) => {
+        // Delete related records first
+        await tx.delete(appointments).where(eq(appointments.patientId, patientId));
+        await tx.delete(labResults).where(eq(labResults.patientId, patientId));
+        await tx.delete(carePlans).where(eq(carePlans.patientId, patientId));
+        await tx.delete(geneticProfiles).where(eq(geneticProfiles.patientId, patientId));
+        await tx.delete(biomarkerData).where(eq(biomarkerData.patientId, patientId));
+        await tx.delete(treatmentResponses).where(eq(treatmentResponses.patientId, patientId));
+        await tx.delete(environmentalFactors).where(eq(environmentalFactors.patientId, patientId));
+        await tx.delete(riskAssessments).where(eq(riskAssessments.patientId, patientId));
+
+        // Finally delete the patient
+        await tx.delete(patients).where(eq(patients.id, patientId));
+      });
+
+      res.json({ success: true, message: 'Patient and related records deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting patient:', error);
+      res.status(500).json({
+        error: 'Failed to delete patient',
+        details: error.message
+      });
+    }
   });
 
   // Lab Results API
