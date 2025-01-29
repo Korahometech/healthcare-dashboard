@@ -1,12 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { useUser } from "@/hooks/use-user";
 import { Button } from "./button";
 import {
   LayoutDashboard,
   Calendar,
   Users,
   BarChart,
-  LogOut,
   Menu,
   Dna,
 } from "lucide-react";
@@ -26,7 +24,6 @@ const menuItems = [
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { logout } = useUser();
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
 
@@ -52,14 +49,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="mb-4">
           <LanguageSwitcher />
         </div>
-        <Button
-          variant="ghost"
-          className="w-full justify-start"
-          onClick={() => logout()}
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          {t('actions.logout')}
-        </Button>
       </div>
     </div>
   );

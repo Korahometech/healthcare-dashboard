@@ -1,6 +1,5 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth } from "./auth";
 import { db } from "@db";
 import { 
   appointments, 
@@ -21,8 +20,6 @@ import {
 import { eq } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
-  setupAuth(app);
-
   // Patients API
   app.get("/api/patients", async (req, res) => {
     const allPatients = await db.query.patients.findMany();
