@@ -18,10 +18,13 @@ import {
   treatmentResponses,
   environmentalFactors,
   riskAssessments,
-  doctors
+  doctors,
+  specialties
 } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { sendEmail, generateAppointmentEmail } from "./lib/email";
+import { z } from "zod";
+import { fromZodError } from "zod-validation-error";
 
 export function registerRoutes(app: Express): Server {
   // Swagger UI route
@@ -149,6 +152,7 @@ export function registerRoutes(app: Express): Server {
    *         riskLevel:
    *           type: string
    *           enum: [low, medium, high]
+   *     
    */
 
   /**
@@ -525,7 +529,117 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+    /**
+   * @swagger
+   * /api/doctors:
+   *   post:
+   *     summary: Create a new doctor
+   *     description: Add a new doctor to the system with validation
+   *     tags: [Doctors]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - name
+   *               - email
+   *               - specialtyId
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 description: Doctor's full name
+   *               email:
+   *                 type: string
+   *                 format: email
+   *                 description: Doctor's email address
+   *               phone:
+   *                 type: string
+   *                 description: Doctor's contact number
+   *               specialtyId:
+   *                 type: integer
+   *                 description: ID of the doctor's specialty
+   *               qualification:
+   *                 type: string
+   *                 description: Doctor's qualifications
+   *               experience:
+   *                 type: integer
+   *                 minimum: 0
+   *                 description: Years of experience
+   *               availableDays:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *                   enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
+   *     responses:
+   *       201:
+   *         description: Doctor created successfully
+   *       400:
+   *         description: Validation error
+   *       409:
+   *         description: Email already exists
+   *       500:
+   *         description: Server error
+   */
+  app.post("/api/doctors", async (req, res) => {
+    try {
+      // First validate the request body
+      const validatedData = insertDoctorSchema.parse(req.body);
+
+      // Check if email already exists
+      const existingDoctor = await db.query.doctors.findFirst({
+        where: eq(doctors.email, validatedData.email),
+      });
+
+      if (existingDoctor) {
+        return res.status(409).send("A doctor with this email already exists");
+      }
+
+      // Check if specialty exists (if specialtyId is provided)
+      if (validatedData.specialtyId) {
+        const specialty = await db.query.specialties.findFirst({
+          where: eq(specialties.id, validatedData.specialtyId),
+        });
+
+        if (!specialty) {
+          return res.status(400).send("Invalid specialty selected");
+        }
+      }
+
+      // Create the doctor
+      const [newDoctor] = await db
+        .insert(doctors)
+        .values(validatedData)
+        .returning();
+
+      // Return success response
+      res.status(201).json(newDoctor);
+    } catch (error: any) {
+      console.error('Error creating doctor:', error);
+
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const validationError = fromZodError(error);
+        return res.status(400).send(validationError.message);
+      }
+
+      res.status(500).json({
+        error: 'Failed to create doctor',
+        details: error.message
+      });
+    }
+  });
 
   const httpServer = createServer(app);
-  return httpServer;
+    return httpServer;
 }
+const insertDoctorSchema = z.object({
+  name: z.string().min(3, 'Name must be at least 3 characters long'),
+  email: z.string().email('Invalid email format'),
+  phone: z.string().optional(),
+  specialtyId: z.number().int().optional(),
+  qualification: z.string().optional(),
+  experience: z.number().int().min(0).optional(),
+  availableDays: z.array(z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])).optional(),
+});
