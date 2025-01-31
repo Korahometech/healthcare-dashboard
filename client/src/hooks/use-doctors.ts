@@ -8,14 +8,17 @@ export function useDoctors() {
     queryKey: ["/api/doctors"],
   });
 
-  const createDoctor = useMutation({
+  const { mutateAsync: createDoctor, isLoading: isCreating } = useMutation({
     mutationFn: async (doctor: InsertDoctor) => {
       const res = await fetch("/api/doctors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(doctor),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error);
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -26,6 +29,7 @@ export function useDoctors() {
   return {
     doctors,
     isLoading,
-    createDoctor: createDoctor.mutateAsync,
+    isCreating,
+    createDoctor,
   };
 }

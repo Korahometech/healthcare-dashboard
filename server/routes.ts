@@ -529,6 +529,36 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+  /**
+   * @swagger
+   * /api/doctors:
+   *   get:
+   *     summary: Get all doctors
+   *     description: Retrieve a list of all doctors with their specialties
+   *     tags: [Doctors]
+   *     responses:
+   *       200:
+   *         description: List of doctors
+   *       500:
+   *         description: Server error
+   */
+  app.get("/api/doctors", async (req, res) => {
+    try {
+      const allDoctors = await db.query.doctors.findMany({
+        with: {
+          specialty: true,
+        },
+        orderBy: (doctors, { desc }) => [desc(doctors.createdAt)],
+      });
+      res.json(allDoctors);
+    } catch (error: any) {
+      console.error('Error fetching doctors:', error);
+      res.status(500).json({
+        error: 'Failed to fetch doctors',
+        details: error.message
+      });
+    }
+  });
     /**
    * @swagger
    * /api/doctors:
