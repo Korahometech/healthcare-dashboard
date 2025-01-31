@@ -11,19 +11,21 @@ import {
   predictHealthTrends
 } from "@/lib/analytics";
 
-export function useHealthTrends(patientId?: number) {
+export type TimeRange = "1M" | "3M" | "6M" | "1Y" | "ALL";
+
+export function useHealthTrends(patientId?: number, timeRange: TimeRange = "6M") {
   const { results: labResults } = useLabResults(patientId || 0);
   const { patients } = usePatients();
 
   const healthTrends = useQuery({
-    queryKey: ["health-trends", patientId],
+    queryKey: ["health-trends", patientId, timeRange],
     queryFn: () => {
-      const labTrends = analyzeLabResultsTrends(labResults);
+      const labTrends = analyzeLabResultsTrends(labResults, timeRange);
       const riskFactors = calculateHealthRiskFactors(patients, labResults);
       const conditionsDistribution = calculateHealthConditionsDistribution(patients);
       const bmiDistribution = calculateBMIDistribution(patients);
       const metricCorrelations = calculateMetricCorrelation(patients, labResults);
-      const detailedTrends = calculateHealthTrends(patients, labResults);
+      const detailedTrends = calculateHealthTrends(patients, labResults, timeRange);
       const predictions = predictHealthTrends(labResults);
 
       return {
@@ -33,7 +35,8 @@ export function useHealthTrends(patientId?: number) {
         bmiDistribution,
         metricCorrelations,
         detailedTrends,
-        predictions
+        predictions,
+        timeRange
       };
     },
     enabled: !!(labResults && patients),

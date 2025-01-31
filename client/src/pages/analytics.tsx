@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAppointments } from "@/hooks/use-appointments";
 import { usePatients } from "@/hooks/use-patients";
-import { useHealthTrends } from "@/hooks/use-health-trends";
+import { useHealthTrends, type TimeRange } from "@/hooks/use-health-trends";
 import { Loader2, Calendar, Users, TrendingUp, MapPin } from "lucide-react";
 import { StatsCard } from "@/components/ui/stats-card";
 import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
@@ -26,17 +26,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts";
-import {
-  calculateCompletionRate,
-  calculateCancellationRate,
-  getAppointmentsByTimeRange,
-  calculateAgeDistribution,
-  calculateGenderDistribution,
-  calculateHealthConditionsDistribution,
-  calculateBMIDistribution,
-} from "@/lib/analytics";
-import {
   AreaChart,
   Area,
   ScatterChart,
@@ -47,7 +36,19 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   Radar,
+  ComposedChart,
+  ErrorBar,
 } from "recharts";
+import {
+  calculateCompletionRate,
+  calculateCancellationRate,
+  getAppointmentsByTimeRange,
+  calculateAgeDistribution,
+  calculateGenderDistribution,
+  calculateHealthConditionsDistribution,
+  calculateBMIDistribution,
+} from "@/lib/analytics";
+import { format } from 'date-fns';
 
 const COLORS = [
   'hsl(var(--primary))',
@@ -56,12 +57,20 @@ const COLORS = [
   'hsl(var(--chart-4))'
 ];
 
+const TIME_RANGES: { label: string; value: TimeRange }[] = [
+  { label: "1 Month", value: "1M" },
+  { label: "3 Months", value: "3M" },
+  { label: "6 Months", value: "6M" },
+  { label: "1 Year", value: "1Y" },
+  { label: "All Time", value: "ALL" },
+];
+
 export default function Analytics() {
+  const [timeRange, setTimeRange] = useState<TimeRange>("6M");
   const { appointments, isLoading: appointmentsLoading } = useAppointments();
   const { patients, isLoading: patientsLoading } = usePatients();
-  const { data: healthTrends, isLoading: healthTrendsLoading } = useHealthTrends();
-  const [timeRange, setTimeRange] = useState<"daily" | "weekly" | "monthly">("weekly");
-
+  const { data: healthTrends, isLoading: healthTrendsLoading } = useHealthTrends(undefined, timeRange);
+  
   const isLoading = appointmentsLoading || patientsLoading || healthTrendsLoading;
 
   if (isLoading) {
@@ -90,6 +99,7 @@ export default function Analytics() {
   const appointmentTrends = getAppointmentsByTimeRange(appointments, timeRange);
   const healthConditions = calculateHealthConditionsDistribution(patients);
   const bmiDistribution = calculateBMIDistribution(patients);
+
 
   return (
     <div className="space-y-8">
@@ -127,6 +137,108 @@ export default function Analytics() {
         />
       </div>
 
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Advanced Health Analytics</h2>
+        <Select
+          value={timeRange}
+          onValueChange={(value: TimeRange) => setTimeRange(value)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select time range" />
+          </SelectTrigger>
+          <SelectContent>
+            {TIME_RANGES.map(({ label, value }) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <DashboardLayout defaultSizes={[60, 40]}>
+        <DashboardPanel>
+          <div className="mb-4">
+            <h3 className="text-xl font-semibold">Health Metrics Trends</h3>
+            <p className="text-sm text-muted-foreground">
+              Detailed view with confidence intervals
+            </p>
+          </div>
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                {healthTrends?.detailedTrends.map((trend, index) => (
+                  <React.Fragment key={trend.category}>
+                    <Line
+                      type="monotone"
+                      data={trend.trends}
+                      name={trend.category}
+                      dataKey="average"
+                      stroke={`hsl(var(--chart-${(index % 4) + 1}))`}
+                      dot={false}
+                    />
+                    <Area
+                      type="monotone"
+                      data={trend.trends}
+                      dataKey="confidenceInterval.upper"
+                      stroke="transparent"
+                      fill={`hsl(var(--chart-${(index % 4) + 1}))`}
+                      fillOpacity={0.1}
+                    />
+                    <Area
+                      type="monotone"
+                      data={trend.trends}
+                      dataKey="confidenceInterval.lower"
+                      stroke="transparent"
+                      fill={`hsl(var(--chart-${(index % 4) + 1}))`}
+                      fillOpacity={0.1}
+                    />
+                  </React.Fragment>
+                ))}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </DashboardPanel>
+
+        <DashboardPanel>
+          <div className="mb-4">
+            <h3 className="text-xl font-semibold">Metric Correlations</h3>
+            <p className="text-sm text-muted-foreground">
+              Relationship between different health indicators
+            </p>
+          </div>
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart>
+                <CartesianGrid />
+                <XAxis
+                  type="number"
+                  dataKey="value1"
+                  name="metric1"
+                  label={{ value: healthTrends?.metricCorrelations[0]?.metric1, position: 'bottom' }}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="value2"
+                  name="metric2"
+                  label={{ value: healthTrends?.metricCorrelations[0]?.metric2, angle: -90, position: 'left' }}
+                />
+                <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                <Scatter
+                  data={healthTrends?.metricCorrelations}
+                  fill="hsl(var(--primary))"
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </DashboardPanel>
+      </DashboardLayout>
+      
       <DashboardLayout defaultSizes={[50, 50]}>
         <DashboardPanel>
           <div className="mb-4">
@@ -314,10 +426,9 @@ export default function Analytics() {
         </DashboardPanel>
       </DashboardLayout>
 
-      {/* New Advanced Analytics Section */}
       <div>
         <h2 className="text-2xl font-bold mb-4">Advanced Health Analytics</h2>
-
+        
         <DashboardLayout defaultSizes={[50, 50]}>
           <DashboardPanel>
             <div className="mb-4">
@@ -466,3 +577,27 @@ export default function Analytics() {
     </div>
   );
 }
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) {
+    return null;
+  }
+
+  return (
+    <div className="bg-background border rounded-lg shadow-lg p-3">
+      <p className="font-semibold">{format(new Date(label), 'MMM d, yyyy')}</p>
+      {payload.map((entry: any, index: number) => (
+        <div key={index} className="mt-2">
+          <p style={{ color: entry.color }}>
+            {entry.name}: {entry.value.toFixed(2)}
+            {entry.payload.confidenceInterval && (
+              <span className="text-sm text-muted-foreground">
+                {' '}(±{((entry.payload.confidenceInterval.upper - entry.payload.confidenceInterval.lower) / 2).toFixed(2)})
+              </span>
+            )}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};

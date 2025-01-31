@@ -15,7 +15,7 @@ import {
   differenceInYears,
 } from "date-fns";
 
-type TimeRange = "daily" | "weekly" | "monthly";
+type TimeRange = "daily" | "weekly" | "monthly" | "1M" | "3M" | "6M" | "1Y" | "ALL";
 
 export function calculateCompletionRate(appointments: SelectAppointment[]): number {
   const completed = appointments.filter((a) => a.status === "confirmed").length;
@@ -133,24 +133,63 @@ export function calculateHealthConditionsDistribution(patients: SelectPatient[])
 }
 
 export function analyzeLabResultsTrends(
-  labResults: SelectLabResult[]
-): { testName: string; trends: { date: string; value: number }[] }[] {
-  const resultsByTest = labResults.reduce((acc, result) => {
+  labResults: SelectLabResult[],
+  timeRange: TimeRange = "6M"
+): { testName: string; trends: { date: string; value: number; confidence: number }[] }[] {
+  const startDate = getStartDateForRange(timeRange);
+
+  const filteredResults = labResults.filter(result => 
+    new Date(result.testDate) >= startDate
+  );
+
+  const resultsByTest = filteredResults.reduce((acc, result) => {
     if (!acc[result.testName]) {
       acc[result.testName] = [];
     }
+    // Add confidence level based on test type and reference ranges
+    const confidence = calculateConfidenceLevel(result);
     acc[result.testName].push({
       date: format(new Date(result.testDate), 'yyyy-MM-dd'),
       value: result.value,
+      confidence
     });
     return acc;
-  }, {} as Record<string, { date: string; value: number }[]>);
+  }, {} as Record<string, { date: string; value: number; confidence: number }[]>);
 
   return Object.entries(resultsByTest)
     .map(([testName, data]) => ({
       testName,
       trends: data.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     }));
+}
+
+function calculateConfidenceLevel(result: SelectLabResult): number {
+  if (!result.referenceMin || !result.referenceMax) return 1;
+
+  const range = result.referenceMax - result.referenceMin;
+  const midpoint = (result.referenceMax + result.referenceMin) / 2;
+  const deviation = Math.abs(result.value - midpoint);
+
+  // Return confidence level between 0 and 1
+  return Math.max(0, Math.min(1, 1 - (deviation / range)));
+}
+
+function getStartDateForRange(range: TimeRange): Date {
+  const now = new Date();
+  switch (range) {
+    case "1M":
+      return subMonths(now, 1);
+    case "3M":
+      return subMonths(now, 3);
+    case "6M":
+      return subMonths(now, 6);
+    case "1Y":
+      return subMonths(now, 12);
+    case "ALL":
+      return new Date(0); // Beginning of time
+    default:
+      return subMonths(now, 6);
+  }
 }
 
 export function calculateHealthRiskFactors(
@@ -263,15 +302,27 @@ export function calculateMetricCorrelation(
 
 export function calculateHealthTrends(
   patients: SelectPatient[],
-  labResults: SelectLabResult[]
+  labResults: SelectLabResult[],
+  timeRange: TimeRange = "6M"
 ): { 
   category: string;
-  trends: { date: string; average: number; min: number; max: number }[] 
+  trends: { 
+    date: string; 
+    average: number; 
+    min: number; 
+    max: number;
+    confidenceInterval: { lower: number; upper: number };
+  }[] 
 }[] {
-  const testCategories = Array.from(new Set(labResults.map(r => r.testName)));
+  const startDate = getStartDateForRange(timeRange);
+  const filteredResults = labResults.filter(result => 
+    new Date(result.testDate) >= startDate
+  );
+
+  const testCategories = Array.from(new Set(filteredResults.map(r => r.testName)));
 
   return testCategories.map(category => {
-    const categoryResults = labResults.filter(r => r.testName === category);
+    const categoryResults = filteredResults.filter(r => r.testName === category);
     const dateGroups = categoryResults.reduce((acc, result) => {
       const date = format(new Date(result.testDate), 'yyyy-MM-dd');
       if (!acc[date]) {
@@ -281,12 +332,21 @@ export function calculateHealthTrends(
       return acc;
     }, {} as Record<string, number[]>);
 
-    const trends = Object.entries(dateGroups).map(([date, values]) => ({
-      date,
-      average: values.reduce((a, b) => a + b, 0) / values.length,
-      min: Math.min(...values),
-      max: Math.max(...values)
-    })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const trends = Object.entries(dateGroups).map(([date, values]) => {
+      const average = values.reduce((a, b) => a + b, 0) / values.length;
+      const standardDeviation = calculateStandardDeviation(values);
+
+      return {
+        date,
+        average,
+        min: Math.min(...values),
+        max: Math.max(...values),
+        confidenceInterval: {
+          lower: average - (1.96 * standardDeviation),
+          upper: average + (1.96 * standardDeviation)
+        }
+      };
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return {
       category,
@@ -294,6 +354,14 @@ export function calculateHealthTrends(
     };
   });
 }
+
+function calculateStandardDeviation(values: number[]): number {
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  const squareDiffs = values.map(value => Math.pow(value - avg, 2));
+  const variance = squareDiffs.reduce((a, b) => a + b, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
 
 export function predictHealthTrends(
   labResults: SelectLabResult[]
