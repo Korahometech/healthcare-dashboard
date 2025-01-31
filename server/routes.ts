@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import swaggerUi from 'swagger-ui-express';
+import { specs } from './swagger';
 import { db } from "@db";
 import { 
   appointments, 
@@ -15,12 +17,35 @@ import {
   biomarkerData,
   treatmentResponses,
   environmentalFactors,
-  riskAssessments
+  riskAssessments,
+  doctors
 } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { sendEmail, generateAppointmentEmail } from "./lib/email";
 
 export function registerRoutes(app: Express): Server {
+  // Swagger UI route
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+
   // Patients API
+  /**
+   * @swagger
+   * /patients:
+   *   get:
+   *     summary: Retrieve all patients
+   *     description: Get a list of all patients in the system
+   *     responses:
+   *       200:
+   *         description: A list of patients
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Patient'
+   *       500:
+   *         description: Server error
+   */
   app.get("/api/patients", async (req, res) => {
     try {
       const allPatients = await db.query.patients.findMany({
@@ -36,9 +61,30 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  /**
+   * @swagger
+   * /patients:
+   *   post:
+   *     summary: Create a new patient
+   *     description: Add a new patient to the system
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/PatientInput'
+   *     responses:
+   *       200:
+   *         description: The created patient
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Patient'
+   *       500:
+   *         description: Server error
+   */
   app.post("/api/patients", async (req, res) => {
     try {
-      // Ensure arrays are properly initialized
       const patientData = {
         ...req.body,
         healthConditions: req.body.healthConditions || [],
@@ -62,9 +108,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const patientId = parseInt(req.params.id);
 
-      // Begin transaction to handle cascading deletes
       await db.transaction(async (tx) => {
-        // Delete related records first
         await tx.delete(appointments).where(eq(appointments.patientId, patientId));
         await tx.delete(labResults).where(eq(labResults.patientId, patientId));
         await tx.delete(carePlans).where(eq(carePlans.patientId, patientId));
@@ -74,7 +118,6 @@ export function registerRoutes(app: Express): Server {
         await tx.delete(environmentalFactors).where(eq(environmentalFactors.patientId, patientId));
         await tx.delete(riskAssessments).where(eq(riskAssessments.patientId, patientId));
 
-        // Finally delete the patient
         await tx.delete(patients).where(eq(patients.id, patientId));
       });
 
@@ -111,6 +154,22 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Appointments API
+  /**
+   * @swagger
+   * /appointments:
+   *   get:
+   *     summary: Retrieve all appointments
+   *     description: Get a list of all appointments with patient and teleconsultation details
+   *     responses:
+   *       200:
+   *         description: A list of appointments
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/Appointment'
+   */
   app.get("/api/appointments", async (req, res) => {
     const allAppointments = await db.query.appointments.findMany({
       with: {
@@ -121,11 +180,32 @@ export function registerRoutes(app: Express): Server {
     res.json(allAppointments);
   });
 
+  /**
+   * @swagger
+   * /appointments:
+   *   post:
+   *     summary: Create a new appointment
+   *     description: Schedule a new appointment with optional teleconsultation
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/AppointmentInput'
+   *     responses:
+   *       200:
+   *         description: The created appointment
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Appointment'
+   *       500:
+   *         description: Server error
+   */
   app.post("/api/appointments", async (req, res) => {
     const { isTeleconsultation, meetingUrl, duration, ...appointmentData } = req.body;
 
     try {
-      // Start a transaction to create both appointment and teleconsultation
       const appointment = await db.transaction(async (tx) => {
         const [newAppointment] = await tx
           .insert(appointments)
@@ -149,9 +229,29 @@ export function registerRoutes(app: Express): Server {
         where: eq(appointments.id, appointment.id),
         with: {
           patient: true,
+          doctor: true,
           teleconsultation: true,
         },
       });
+
+      // Send email notifications
+      if (appointmentWithDetails && appointmentWithDetails.patient && appointmentWithDetails.doctor) {
+        const emailData = generateAppointmentEmail({
+          date: appointmentWithDetails.date,
+          patient: appointmentWithDetails.patient,
+          doctor: appointmentWithDetails.doctor,
+          notes: appointmentWithDetails.notes || undefined,
+          isTeleconsultation: !!appointmentWithDetails.teleconsultation,
+          meetingUrl: appointmentWithDetails.teleconsultation?.meetingUrl,
+        });
+
+        Promise.all([
+          sendEmail(emailData.patient),
+          sendEmail(emailData.doctor),
+        ]).catch((error) => {
+          console.error('Error sending appointment notification emails:', error);
+        });
+      }
 
       res.json(appointmentWithDetails);
     } catch (error: any) {
@@ -173,235 +273,6 @@ export function registerRoutes(app: Express): Server {
     res.json(appointment[0]);
   });
 
-  // Teleconsultation API
-  app.get("/api/teleconsultations", async (req, res) => {
-    const allConsultations = await db.query.teleconsultations.findMany({
-      with: {
-        appointment: {
-          with: {
-            patient: true,
-          },
-        },
-      },
-    });
-    res.json(allConsultations);
-  });
-
-  app.put("/api/teleconsultations/:id", async (req, res) => {
-    const { status, endTime } = req.body;
-    const consultation = await db
-      .update(teleconsultations)
-      .set({ status, endTime })
-      .where(eq(teleconsultations.id, parseInt(req.params.id)))
-      .returning();
-    res.json(consultation[0]);
-  });
-
-  // Care Plans API
-  app.get("/api/patients/:patientId/care-plans", async (req, res) => {
-    const carePlansList = await db.query.carePlans.findMany({
-      where: eq(carePlans.patientId, parseInt(req.params.patientId)),
-      with: {
-        treatments: true,
-        medications: true,
-        healthGoals: {
-          with: {
-            progressEntries: true,
-          },
-        },
-      },
-    });
-    res.json(carePlansList);
-  });
-
-  app.post("/api/patients/:patientId/care-plans", async (req, res) => {
-    const carePlan = await db
-      .insert(carePlans)
-      .values({
-        ...req.body,
-        patientId: parseInt(req.params.patientId),
-      })
-      .returning();
-    res.json(carePlan[0]);
-  });
-
-  // Treatments API
-  app.post("/api/care-plans/:carePlanId/treatments", async (req, res) => {
-    const treatment = await db
-      .insert(treatments)
-      .values({
-        ...req.body,
-        carePlanId: parseInt(req.params.carePlanId),
-      })
-      .returning();
-    res.json(treatment[0]);
-  });
-
-  // Medications API
-  app.post("/api/care-plans/:carePlanId/medications", async (req, res) => {
-    const medication = await db
-      .insert(medications)
-      .values({
-        ...req.body,
-        carePlanId: parseInt(req.params.carePlanId),
-      })
-      .returning();
-    res.json(medication[0]);
-  });
-
-  // Health Goals API
-  app.post("/api/care-plans/:carePlanId/goals", async (req, res) => {
-    const goal = await db
-      .insert(healthGoals)
-      .values({
-        ...req.body,
-        carePlanId: parseInt(req.params.carePlanId),
-      })
-      .returning();
-    res.json(goal[0]);
-  });
-
-  // Progress Entries API
-  app.post("/api/goals/:goalId/progress", async (req, res) => {
-    const entry = await db
-      .insert(progressEntries)
-      .values({
-        ...req.body,
-        healthGoalId: parseInt(req.params.goalId),
-      })
-      .returning();
-    res.json(entry[0]);
-  });
-
-  // Genetic Profiles API
-  app.get("/api/genetic-profiles", async (req, res) => {
-    try {
-      const profiles = await db.query.geneticProfiles.findMany({
-        with: {
-          patient: true,
-        },
-      });
-      res.json(profiles);
-    } catch (error: any) {
-      console.error('Error fetching genetic profiles:', error);
-      res.status(500).json({
-        error: 'Failed to fetch genetic profiles',
-        details: error.message
-      });
-    }
-  });
-
-  app.get("/api/patients/:patientId/genetic-profiles", async (req, res) => {
-    try {
-      const profiles = await db.query.geneticProfiles.findMany({
-        where: eq(geneticProfiles.patientId, parseInt(req.params.patientId)),
-      });
-      res.json(profiles);
-    } catch (error: any) {
-      console.error('Error fetching patient genetic profiles:', error);
-      res.status(500).json({
-        error: 'Failed to fetch patient genetic profiles',
-        details: error.message
-      });
-    }
-  });
-
-  app.post("/api/genetic-profiles", async (req, res) => {
-    try {
-      const profile = await db
-        .insert(geneticProfiles)
-        .values(req.body)
-        .returning();
-      res.json(profile[0]);
-    } catch (error: any) {
-      console.error('Error creating genetic profile:', error);
-      res.status(500).json({
-        error: 'Failed to create genetic profile',
-        details: error.message
-      });
-    }
-  });
-
-  // Biomarker Data API
-  app.get("/api/patients/:patientId/biomarkers", async (req, res) => {
-    try {
-      const biomarkers = await db.query.biomarkerData.findMany({
-        where: eq(biomarkerData.patientId, parseInt(req.params.patientId)),
-      });
-      res.json(biomarkers);
-    } catch (error: any) {
-      console.error('Error fetching biomarker data:', error);
-      res.status(500).json({
-        error: 'Failed to fetch biomarker data',
-        details: error.message
-      });
-    }
-  });
-
-  app.post("/api/biomarkers", async (req, res) => {
-    try {
-      const biomarker = await db
-        .insert(biomarkerData)
-        .values(req.body)
-        .returning();
-      res.json(biomarker[0]);
-    } catch (error: any) {
-      console.error('Error creating biomarker data:', error);
-      res.status(500).json({
-        error: 'Failed to create biomarker data',
-        details: error.message
-      });
-    }
-  });
-
-  // Treatment Responses API
-  app.get("/api/patients/:patientId/treatment-responses", async (req, res) => {
-    try {
-      const responses = await db.query.treatmentResponses.findMany({
-        where: eq(treatmentResponses.patientId, parseInt(req.params.patientId)),
-      });
-      res.json(responses);
-    } catch (error: any) {
-      console.error('Error fetching treatment responses:', error);
-      res.status(500).json({
-        error: 'Failed to fetch treatment responses',
-        details: error.message
-      });
-    }
-  });
-
-  app.post("/api/treatment-responses", async (req, res) => {
-    try {
-      const response = await db
-        .insert(treatmentResponses)
-        .values(req.body)
-        .returning();
-      res.json(response[0]);
-    } catch (error: any) {
-      console.error('Error creating treatment response:', error);
-      res.status(500).json({
-        error: 'Failed to create treatment response',
-        details: error.message
-      });
-    }
-  });
-
-  // Risk Assessments API
-  app.get("/api/patients/:patientId/risk-assessments", async (req, res) => {
-    try {
-      const assessments = await db.query.riskAssessments.findMany({
-        where: eq(riskAssessments.patientId, parseInt(req.params.patientId)),
-      });
-      res.json(assessments);
-    } catch (error: any) {
-      console.error('Error fetching risk assessments:', error);
-      res.status(500).json({
-        error: 'Failed to fetch risk assessments',
-        details: error.message
-      });
-    }
-  });
-
   app.post("/api/risk-assessments", async (req, res) => {
     try {
       const assessment = await db
@@ -417,6 +288,66 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+
+  /**
+   * @swagger
+   * components:
+   *   schemas:
+   *     Patient:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: integer
+   *         name:
+   *           type: string
+   *         email:
+   *           type: string
+   *         phone:
+   *           type: string
+   *         dateOfBirth:
+   *           type: string
+   *           format: date
+   *         healthConditions:
+   *           type: array
+   *           items:
+   *             type: string
+   *         medications:
+   *           type: array
+   *           items:
+   *             type: string
+   *         allergies:
+   *           type: array
+   *           items:
+   *             type: string
+   *         chronicConditions:
+   *           type: array
+   *           items:
+   *             type: string
+   *     Appointment:
+   *       type: object
+   *       properties:
+   *         id:
+   *           type: integer
+   *         patientId:
+   *           type: integer
+   *         doctorId:
+   *           type: integer
+   *         date:
+   *           type: string
+   *           format: date-time
+   *         status:
+   *           type: string
+   *           enum: [scheduled, confirmed, cancelled]
+   *         notes:
+   *           type: string
+   *         teleconsultation:
+   *           type: object
+   *           properties:
+   *             meetingUrl:
+   *               type: string
+   *             duration:
+   *               type: integer
+   */
 
   const httpServer = createServer(app);
   return httpServer;
