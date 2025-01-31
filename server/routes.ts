@@ -27,13 +27,137 @@ export function registerRoutes(app: Express): Server {
   // Swagger UI route
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
-  // Patients API
   /**
    * @swagger
-   * /patients:
+   * components:
+   *   schemas:
+   *     Patient:
+   *       type: object
+   *       required:
+   *         - name
+   *         - email
+   *       properties:
+   *         id:
+   *           type: integer
+   *           description: Auto-generated ID
+   *         name:
+   *           type: string
+   *           description: Patient's full name
+   *         email:
+   *           type: string
+   *           format: email
+   *           description: Patient's email address
+   *         phone:
+   *           type: string
+   *           description: Patient's contact number
+   *         dateOfBirth:
+   *           type: string
+   *           format: date
+   *           description: Patient's date of birth
+   *         healthConditions:
+   *           type: array
+   *           items:
+   *             type: string
+   *           description: List of patient's health conditions
+   *         medications:
+   *           type: array
+   *           items:
+   *             type: string
+   *           description: List of current medications
+   *         allergies:
+   *           type: array
+   *           items:
+   *             type: string
+   *           description: List of allergies
+   *         chronicConditions:
+   *           type: array
+   *           items:
+   *             type: string
+   *           description: List of chronic conditions
+   *     
+   *     Appointment:
+   *       type: object
+   *       required:
+   *         - patientId
+   *         - doctorId
+   *         - date
+   *       properties:
+   *         id:
+   *           type: integer
+   *           description: Auto-generated ID
+   *         patientId:
+   *           type: integer
+   *           description: ID of the patient
+   *         doctorId:
+   *           type: integer
+   *           description: ID of the doctor
+   *         date:
+   *           type: string
+   *           format: date-time
+   *           description: Appointment date and time
+   *         status:
+   *           type: string
+   *           enum: [scheduled, confirmed, cancelled]
+   *           description: Current status of the appointment
+   *         notes:
+   *           type: string
+   *           description: Additional notes about the appointment
+   *         teleconsultation:
+   *           type: object
+   *           properties:
+   *             meetingUrl:
+   *               type: string
+   *               description: Video consultation meeting URL
+   *             duration:
+   *               type: integer
+   *               description: Duration in minutes
+   *     
+   *     LabResult:
+   *       type: object
+   *       required:
+   *         - patientId
+   *         - testType
+   *         - result
+   *       properties:
+   *         id:
+   *           type: integer
+   *         patientId:
+   *           type: integer
+   *         testType:
+   *           type: string
+   *         result:
+   *           type: string
+   *         date:
+   *           type: string
+   *           format: date-time
+   *     
+   *     RiskAssessment:
+   *       type: object
+   *       required:
+   *         - patientId
+   *         - riskFactors
+   *         - riskLevel
+   *       properties:
+   *         id:
+   *           type: integer
+   *         patientId:
+   *           type: integer
+   *         riskFactors:
+   *           type: array
+   *           items:
+   *             type: string
+   *         riskLevel:
+   *           type: string
+   *           enum: [low, medium, high]
+   */
+
+  /**
+   * @swagger
+   * /api/patients:
    *   get:
    *     summary: Retrieve all patients
    *     description: Get a list of all patients in the system
+   *     tags: [Patients]
    *     responses:
    *       200:
    *         description: A list of patients
@@ -43,6 +167,25 @@ export function registerRoutes(app: Express): Server {
    *               type: array
    *               items:
    *                 $ref: '#/components/schemas/Patient'
+   *       500:
+   *         description: Server error
+   *   post:
+   *     summary: Create a new patient
+   *     description: Add a new patient to the system
+   *     tags: [Patients]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/Patient'
+   *     responses:
+   *       200:
+   *         description: The created patient
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Patient'
    *       500:
    *         description: Server error
    */
@@ -61,28 +204,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  /**
-   * @swagger
-   * /patients:
-   *   post:
-   *     summary: Create a new patient
-   *     description: Add a new patient to the system
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/PatientInput'
-   *     responses:
-   *       200:
-   *         description: The created patient
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Patient'
-   *       500:
-   *         description: Server error
-   */
   app.post("/api/patients", async (req, res) => {
     try {
       const patientData = {
@@ -104,6 +225,26 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  /**
+   * @swagger
+   * /api/patients/{id}:
+   *   delete:
+   *     summary: Delete a patient
+   *     description: Delete a patient and all related records
+   *     tags: [Patients]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Patient ID
+   *     responses:
+   *       200:
+   *         description: Patient deleted successfully
+   *       500:
+   *         description: Server error
+   */
   app.delete("/api/patients/:id", async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
@@ -131,7 +272,54 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Lab Results API
+  /**
+   * @swagger
+   * /api/patients/{patientId}/lab-results:
+   *   get:
+   *     summary: Get patient's lab results
+   *     description: Retrieve all lab results for a specific patient
+   *     tags: [Lab Results]
+   *     parameters:
+   *       - in: path
+   *         name: patientId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Patient ID
+   *     responses:
+   *       200:
+   *         description: List of lab results
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/LabResult'
+   *   post:
+   *     summary: Create lab result
+   *     description: Add a new lab result for a specific patient
+   *     tags: [Lab Results]
+   *     parameters:
+   *       - in: path
+   *         name: patientId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Patient ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/LabResult'
+   *     responses:
+   *       200:
+   *         description: Created lab result
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/LabResult'
+   */
   app.get("/api/patients/:patientId/lab-results", async (req, res) => {
     const results = await db.query.labResults.findMany({
       where: eq(labResults.patientId, parseInt(req.params.patientId)),
@@ -153,22 +341,39 @@ export function registerRoutes(app: Express): Server {
     res.json(result[0]);
   });
 
-  // Appointments API
   /**
    * @swagger
-   * /appointments:
+   * /api/appointments:
    *   get:
-   *     summary: Retrieve all appointments
-   *     description: Get a list of all appointments with patient and teleconsultation details
+   *     summary: Get all appointments
+   *     description: Retrieve all appointments with patient and teleconsultation details
+   *     tags: [Appointments]
    *     responses:
    *       200:
-   *         description: A list of appointments
+   *         description: List of appointments
    *         content:
    *           application/json:
    *             schema:
    *               type: array
    *               items:
    *                 $ref: '#/components/schemas/Appointment'
+   *   post:
+   *     summary: Create appointment
+   *     description: Schedule a new appointment with optional teleconsultation
+   *     tags: [Appointments]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/Appointment'
+   *     responses:
+   *       200:
+   *         description: Created appointment
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Appointment'
    */
   app.get("/api/appointments", async (req, res) => {
     const allAppointments = await db.query.appointments.findMany({
@@ -180,28 +385,6 @@ export function registerRoutes(app: Express): Server {
     res.json(allAppointments);
   });
 
-  /**
-   * @swagger
-   * /appointments:
-   *   post:
-   *     summary: Create a new appointment
-   *     description: Schedule a new appointment with optional teleconsultation
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/AppointmentInput'
-   *     responses:
-   *       200:
-   *         description: The created appointment
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Appointment'
-   *       500:
-   *         description: Server error
-   */
   app.post("/api/appointments", async (req, res) => {
     const { isTeleconsultation, meetingUrl, duration, ...appointmentData } = req.body;
 
@@ -234,7 +417,6 @@ export function registerRoutes(app: Express): Server {
         },
       });
 
-      // Send email notifications
       if (appointmentWithDetails && appointmentWithDetails.patient && appointmentWithDetails.doctor) {
         const emailData = generateAppointmentEmail({
           date: appointmentWithDetails.date,
@@ -263,6 +445,40 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  /**
+   * @swagger
+   * /api/appointments/{id}/status:
+   *   put:
+   *     summary: Update appointment status
+   *     description: Update the status of an existing appointment
+   *     tags: [Appointments]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Appointment ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - status
+   *             properties:
+   *               status:
+   *                 type: string
+   *                 enum: [scheduled, confirmed, cancelled]
+   *     responses:
+   *       200:
+   *         description: Updated appointment
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Appointment'
+   */
   app.put("/api/appointments/:id/status", async (req, res) => {
     const { status } = req.body;
     const appointment = await db
@@ -273,6 +489,27 @@ export function registerRoutes(app: Express): Server {
     res.json(appointment[0]);
   });
 
+  /**
+   * @swagger
+   * /api/risk-assessments:
+   *   post:
+   *     summary: Create risk assessment
+   *     description: Create a new risk assessment for a patient
+   *     tags: [Risk Assessments]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/RiskAssessment'
+   *     responses:
+   *       200:
+   *         description: Created risk assessment
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/RiskAssessment'
+   */
   app.post("/api/risk-assessments", async (req, res) => {
     try {
       const assessment = await db
@@ -288,66 +525,6 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-
-  /**
-   * @swagger
-   * components:
-   *   schemas:
-   *     Patient:
-   *       type: object
-   *       properties:
-   *         id:
-   *           type: integer
-   *         name:
-   *           type: string
-   *         email:
-   *           type: string
-   *         phone:
-   *           type: string
-   *         dateOfBirth:
-   *           type: string
-   *           format: date
-   *         healthConditions:
-   *           type: array
-   *           items:
-   *             type: string
-   *         medications:
-   *           type: array
-   *           items:
-   *             type: string
-   *         allergies:
-   *           type: array
-   *           items:
-   *             type: string
-   *         chronicConditions:
-   *           type: array
-   *           items:
-   *             type: string
-   *     Appointment:
-   *       type: object
-   *       properties:
-   *         id:
-   *           type: integer
-   *         patientId:
-   *           type: integer
-   *         doctorId:
-   *           type: integer
-   *         date:
-   *           type: string
-   *           format: date-time
-   *         status:
-   *           type: string
-   *           enum: [scheduled, confirmed, cancelled]
-   *         notes:
-   *           type: string
-   *         teleconsultation:
-   *           type: object
-   *           properties:
-   *             meetingUrl:
-   *               type: string
-   *             duration:
-   *               type: integer
-   */
 
   const httpServer = createServer(app);
   return httpServer;
