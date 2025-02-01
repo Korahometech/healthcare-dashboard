@@ -81,15 +81,49 @@ import type { Patient } from "@db/schema";
 import { insertPatientSchema } from "@db/schema";
 import { Timeline } from "@/components/ui/timeline";
 import { usePatientTimeline } from "@/hooks/use-patient-timeline";
+import { Badge } from "@/components/ui/badge";
+import { Search } from "lucide-react";
 
-type InsertPatient = Omit<Patient, "id" | "createdAt">;
+interface EmergencyContact {
+  name: string;
+  relationship: string;
+  phone: string;
+}
+
+type PatientFilters = {
+  searchTerm: string;
+  healthCondition: string;
+  status: string;
+};
+
+type InsertPatient = Omit<Patient, "id" | "createdAt"> & {
+  emergencyContact?: EmergencyContact;
+  medicalNotes?: string;
+  status?: "active" | "inactive";
+};
 
 export default function Patients() {
   const [open, setOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<number | null>(null);
+    const [filters, setFilters] = useState<PatientFilters>({
+    searchTerm: "",
+    healthCondition: "",
+    status: "all",
+  });
   const { patients, createPatient, deletePatient, isLoading } = usePatients();
   const { data: timeline, isLoading: isLoadingTimeline } = usePatientTimeline(selectedPatient);
   const { toast } = useToast();
+
+  const filteredPatients = patients.filter((patient) => {
+    const matchesSearch = patient.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+      patient.email.toLowerCase().includes(filters.searchTerm.toLowerCase());
+    const matchesCondition = !filters.healthCondition || 
+      patient.healthConditions?.includes(filters.healthCondition);
+    const matchesStatus = filters.status === "all" || patient.status === filters.status;
+
+    return matchesSearch && matchesCondition && matchesStatus;
+  });
+
 
   const form = useForm<InsertPatient>({
     resolver: zodResolver(insertPatientSchema),
@@ -107,6 +141,13 @@ export default function Patients() {
       smokingStatus: "never",
       exerciseFrequency: "never",
       preferredCommunication: "email",
+      emergencyContact: {
+        name: "",
+        relationship: "",
+        phone: "",
+      },
+      medicalNotes: "",
+      status: "active",
     },
   });
 
@@ -152,10 +193,18 @@ export default function Patients() {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Patients</h1>
+         <div>
+          <h1 className="text-3xl font-bold">Patients</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage patient records and medical histories
+          </p>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>Add Patient</Button>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Patient
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
@@ -167,7 +216,7 @@ export default function Patients() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <Accordion type="single" collapsible defaultValue="personal">
-                  {/* Personal Information */}
+                  {/* Personal Information Section */}
                   <AccordionItem value="personal">
                     <AccordionTrigger>Personal Information</AccordionTrigger>
                     <AccordionContent className="space-y-4">
@@ -229,7 +278,68 @@ export default function Patients() {
                     </AccordionContent>
                   </AccordionItem>
 
-                  {/* Medical Information */}
+                  {/* Emergency Contact Section - New */}
+                   <AccordionItem value="emergency">
+                    <AccordionTrigger>Emergency Contact</AccordionTrigger>
+                    <AccordionContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="emergencyContact.name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Contact Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="emergencyContact.phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Contact Phone</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="tel" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="emergencyContact.relationship"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Relationship</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select relationship" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="spouse">Spouse</SelectItem>
+                                  <SelectItem value="parent">Parent</SelectItem>
+                                  <SelectItem value="child">Child</SelectItem>
+                                  <SelectItem value="sibling">Sibling</SelectItem>
+                                  <SelectItem value="friend">Friend</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Medical History Section - Enhanced */}
                   <AccordionItem value="medical">
                     <AccordionTrigger>Medical Information</AccordionTrigger>
                     <AccordionContent className="space-y-4">
@@ -266,6 +376,23 @@ export default function Patients() {
                             </FormItem>
                           )}
                         />
+                          <FormField
+                          control={form.control}
+                          name="medicalNotes"
+                          render={({ field }) => (
+                            <FormItem className="col-span-2">
+                              <FormLabel>Medical Notes</FormLabel>
+                              <FormControl>
+                                <Textarea
+                                  {...field}
+                                  placeholder="Enter any additional medical notes or observations"
+                                  className="min-h-[100px]"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -284,6 +411,32 @@ export default function Patients() {
         </Dialog>
       </div>
 
+      {/* New Search and Filter Section */}
+      <div className="flex gap-4 items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search patients..."
+            value={filters.searchTerm}
+            onChange={(e) => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+            className="pl-9"
+          />
+        </div>
+        <Select
+          value={filters.status}
+          onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Patients</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {isLoading ? (
         <div className="flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -297,13 +450,13 @@ export default function Patients() {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Health Conditions</TableHead>
+                   <TableHead>Health Conditions</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {patients.map((patient) => (
+                {filteredPatients.map((patient) => (
                   <TableRow
                     key={patient.id}
                     className="cursor-pointer"
@@ -312,7 +465,7 @@ export default function Patients() {
                     <TableCell className="font-medium">{patient.name}</TableCell>
                     <TableCell>{patient.email}</TableCell>
                     <TableCell>{patient.phone}</TableCell>
-                    <TableCell>{patient.healthConditions?.join(", ")}</TableCell>
+                     <TableCell>{patient.healthConditions?.join(", ")}</TableCell>
                     <TableCell>
                       {patient.createdAt &&
                         format(new Date(patient.createdAt), "PP")}
@@ -419,6 +572,10 @@ export default function Patients() {
                             <div className="grid grid-cols-3">
                               <dt className="font-medium">Allergies:</dt>
                               <dd className="col-span-2">{patients.find(p => p.id === selectedPatient)?.allergies?.join(", ") || "None"}</dd>
+                            </div>
+                               <div className="grid grid-cols-3">
+                              <dt className="font-medium">Medical Notes:</dt>
+                              <dd className="col-span-2">{patients.find(p => p.id === selectedPatient)?.medicalNotes || "None"}</dd>
                             </div>
                           </dl>
                         </CardContent>

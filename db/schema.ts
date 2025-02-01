@@ -50,6 +50,10 @@ export const patients = pgTable("patients", {
   preferredCommunication: text("preferred_communication"),
   languagePreference: text("language_preference"),
 
+  // Additional fields for enhanced patient management
+  status: text("status").default("active"),
+  medicalNotes: text("medical_notes"),
+
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
@@ -70,6 +74,11 @@ export const insertPatientSchema = createInsertSchema(patients).extend({
   preferredCommunication: z.enum(['email', 'phone', 'sms']).nullable().optional(),
   height: z.number().int().positive().nullable().optional(),
   weight: z.number().int().positive().nullable().optional(),
+  status: z.enum(['active', 'inactive']).default('active'),
+  medicalNotes: z.string().nullable().optional(),
+  emergencyContactName: z.string().nullable().optional(),
+  emergencyContactPhone: z.string().nullable().optional(),
+  emergencyContactRelation: z.enum(['spouse', 'parent', 'child', 'sibling', 'friend', 'other']).nullable().optional(),
 });
 
 export const selectPatientSchema = createSelectSchema(patients);
