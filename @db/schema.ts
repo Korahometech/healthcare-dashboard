@@ -54,6 +54,7 @@ export const appointments = pgTable("appointments", {
   date: timestamp("date").notNull(),
   status: text("status").default("scheduled"),
   notes: text("notes"),
+  actualStartTime: timestamp("actual_start_time"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });

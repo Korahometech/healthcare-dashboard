@@ -17,6 +17,89 @@ import {
 
 type TimeRange = "daily" | "weekly" | "monthly" | "1M" | "3M" | "6M" | "1Y" | "ALL";
 
+// Add new appointment optimization functions
+export function calculateAppointmentOptimization(
+  appointments: SelectAppointment[]
+): {
+  peakHours: { hour: number; count: number }[];
+  noShowRate: { date: string; rate: number }[];
+  waitTimes: { date: string; avgWaitMinutes: number }[];
+  schedulingEfficiency: number;
+} {
+  // Calculate peak appointment hours
+  const hourCounts = appointments.reduce((acc, appointment) => {
+    const hour = new Date(appointment.date).getHours();
+    acc[hour] = (acc[hour] || 0) + 1;
+    return acc;
+  }, {} as Record<number, number>);
+
+  const peakHours = Object.entries(hourCounts)
+    .map(([hour, count]) => ({ hour: parseInt(hour), count }))
+    .sort((a, b) => b.count - a.count);
+
+  // Calculate no-show rates by date
+  const appointmentsByDate = appointments.reduce((acc, appointment) => {
+    const date = format(new Date(appointment.date), 'yyyy-MM-dd');
+    if (!acc[date]) {
+      acc[date] = { total: 0, noShows: 0 };
+    }
+    acc[date].total++;
+    if (appointment.status === 'no-show') {
+      acc[date].noShows++;
+    }
+    return acc;
+  }, {} as Record<string, { total: number; noShows: number }>);
+
+  const noShowRate = Object.entries(appointmentsByDate)
+    .map(([date, { total, noShows }]) => ({
+      date,
+      rate: (noShows / total) * 100,
+    }))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Calculate average wait times
+  const waitTimes = appointments
+    .reduce((acc, appointment) => {
+      const date = format(new Date(appointment.date), 'yyyy-MM-dd');
+      if (!acc[date]) {
+        acc[date] = { total: 0, count: 0 };
+      }
+      if (appointment.actualStartTime) {
+        const scheduledTime = new Date(appointment.date);
+        const actualTime = new Date(appointment.actualStartTime);
+        const waitMinutes = (actualTime.getTime() - scheduledTime.getTime()) / (1000 * 60);
+        acc[date].total += waitMinutes;
+        acc[date].count++;
+      }
+      return acc;
+    }, {} as Record<string, { total: number; count: number }>);
+
+  const avgWaitTimes = Object.entries(waitTimes)
+    .map(([date, { total, count }]) => ({
+      date,
+      avgWaitMinutes: count > 0 ? total / count : 0,
+    }))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Calculate overall scheduling efficiency
+  const totalAppointments = appointments.length;
+  const completedOnTime = appointments.filter(
+    a => a.status === 'completed' && (!a.actualStartTime || 
+    new Date(a.actualStartTime).getTime() - new Date(a.date).getTime() <= 15 * 60 * 1000) // 15 minutes threshold
+  ).length;
+
+  const schedulingEfficiency = totalAppointments > 0 
+    ? (completedOnTime / totalAppointments) * 100 
+    : 0;
+
+  return {
+    peakHours,
+    noShowRate,
+    waitTimes: avgWaitTimes,
+    schedulingEfficiency,
+  };
+}
+
 export function calculateCompletionRate(appointments: SelectAppointment[]): number {
   const completed = appointments.filter((a) => a.status === "confirmed").length;
   return appointments.length > 0
@@ -253,8 +336,6 @@ export function calculateBMIDistribution(patients: SelectPatient[]): { category:
     .map(([category, count]) => ({ category, count }));
 }
 
-
-// Add new analytics functions for advanced visualizations
 export function calculateMetricCorrelation(
   patients: SelectPatient[],
   labResults: SelectLabResult[]

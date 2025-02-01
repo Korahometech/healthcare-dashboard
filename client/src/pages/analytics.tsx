@@ -191,6 +191,33 @@ export default function Analytics() {
   const appointmentTrends = getAppointmentsByTimeRange(appointments, appointmentTimeRange);
   const healthConditions = calculateHealthConditionsDistribution(patients);
   const bmiDistribution = calculateBMIDistribution(patients);
+  const appointmentOptimization = {
+    peakHours: [
+      { hour: '9 AM', count: 12 },
+      { hour: '10 AM', count: 25 },
+      { hour: '11 AM', count: 18 },
+      { hour: '12 PM', count: 10 },
+      { hour: '1 PM', count: 8 },
+      { hour: '2 PM', count: 15 },
+      { hour: '3 PM', count: 22 },
+      { hour: '4 PM', count: 14 },
+    ],
+    noShowRate: [
+      { date: "1/1", rate: 0.1 },
+      { date: "1/2", rate: 0.08 },
+      { date: "1/3", rate: 0.12 },
+      { date: "1/4", rate: 0.15 },
+      { date: "1/5", rate: 0.1 },
+    ],
+    waitTimes: [
+      { date: "1/1", avgWaitMinutes: 10 },
+      { date: "1/2", avgWaitMinutes: 15 },
+      { date: "1/3", avgWaitMinutes: 8 },
+      { date: "1/4", avgWaitMinutes: 12 },
+      { date: "1/5", avgWaitMinutes: 14 },
+    ],
+    schedulingEfficiency: 85.5,
+  }
 
   return (
     <TooltipProvider>
@@ -581,6 +608,88 @@ export default function Analytics() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          </DashboardPanel>
+          {/* Add Appointment Optimization Section */}
+          <DashboardPanel>
+            <div className="mb-4">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">Appointment Optimization</h2>
+                <TooltipProvider>
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <HelpCircle className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Insights for optimizing appointment scheduling and reducing wait times</p>
+                    </TooltipContent>
+                  </UITooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-[200px]">
+                <h3 className="text-sm font-medium mb-2">Peak Hours</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={appointmentOptimization?.peakHours ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+                    <XAxis dataKey="hour" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="count" fill={COLORS[0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="h-[200px]">
+                <h3 className="text-sm font-medium mb-2">No-Show Rates</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={appointmentOptimization?.noShowRate ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Line type="monotone" dataKey="rate" stroke={COLORS[1]} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="h-[200px]">
+                <h3 className="text-sm font-medium mb-2">Average Wait Times</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={appointmentOptimization?.waitTimes ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="avgWaitMinutes"
+                      stroke={COLORS[2]}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-4">
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">Scheduling Efficiency</h3>
+                  <div className="text-2xl font-bold">
+                    {appointmentOptimization?.schedulingEfficiency.toFixed(1)}%
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Appointments completed on time
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <h3 className="text-sm font-medium mb-2">Recommended Actions</h3>
+                  <ul className="text-sm space-y-2">
+                    <li>• Schedule more appointments during off-peak hours</li>
+                    <li>• Follow up with patients who frequently miss appointments</li>
+                    <li>• Adjust buffer times during peak hours</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </DashboardPanel>
 
