@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { date, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { date, integer, pgTable, text, timestamp, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -64,8 +64,10 @@ export const symptomJournals = pgTable("symptom_journals", {
   patientId: integer("patient_id").notNull().references(() => patients.id),
   symptoms: text("symptoms").array(),
   severity: integer("severity").notNull(),
+  mood: text("mood").notNull(),
   duration: text("duration"),
   notes: text("notes"),
+  dateRecorded: timestamp("date_recorded").default(sql`CURRENT_TIMESTAMP`),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -74,9 +76,9 @@ export const symptomAnalysis = pgTable("symptom_analysis", {
   id: integer("id").primaryKey().notNull(),
   journalId: integer("journal_id").notNull().references(() => symptomJournals.id),
   analysis: text("analysis").notNull(),
-  recommendations: text("recommendations"),
-  severity: text("severity"),
-  trends: text("trends"),
+  sentiment: text("sentiment"),
+  suggestedActions: text("suggested_actions").array(),
+  aiConfidence: numeric("ai_confidence"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
