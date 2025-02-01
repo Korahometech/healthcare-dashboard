@@ -44,7 +44,7 @@ type AppointmentWithPatient = SelectAppointment & {
   };
 };
 
-export default function Dashboard() {
+function Dashboard() {
   const { appointments, isLoading: appointmentsLoading } = useAppointments();
   const { patients, isLoading: patientsLoading } = usePatients();
   const [timeRange, setTimeRange] = useState("6m");
@@ -172,7 +172,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">Dashboard Overview</h1>
@@ -216,13 +216,13 @@ export default function Dashboard() {
 
       <DashboardLayout defaultSizes={[40, 60]}>
         <DashboardPanel>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-2xl font-semibold">Appointment Status</h2>
               <p className="text-sm text-muted-foreground mt-1">Current distribution</p>
             </div>
           </div>
-          <div className="h-[500px] flex items-center">
+          <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -231,7 +231,7 @@ export default function Dashboard() {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={120}
+                  outerRadius={80}
                   label={({ name, percent }) =>
                     `${name} ${(percent * 100).toFixed(0)}%`
                   }
@@ -252,14 +252,22 @@ export default function Dashboard() {
                     borderRadius: "var(--radius)",
                   }}
                 />
-                <Legend />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconSize={8}
+                  iconType="circle"
+                  formatter={(value: string) => (
+                    <span className="text-xs">{value}</span>
+                  )}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </DashboardPanel>
 
         <DashboardPanel>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-2xl font-semibold">Growth Trends</h2>
               <p className="text-sm text-muted-foreground mt-1">Patient and appointment growth</p>
@@ -278,7 +286,7 @@ export default function Dashboard() {
               </SelectContent>
             </Select>
           </div>
-          <div className="h-[500px]">
+          <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={monthlyStats} className="transition-all duration-300">
                 <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
@@ -286,45 +294,58 @@ export default function Dashboard() {
                   dataKey="name"
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
+                  tickMargin={8}
                 />
                 <YAxis
                   yAxisId="left"
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
+                  tickMargin={8}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
                   stroke="hsl(var(--muted-foreground))"
                   fontSize={12}
+                  tickMargin={8}
                 />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--background))",
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "var(--radius)",
+                    fontSize: "12px",
+                    padding: "8px",
                   }}
                 />
-                <Legend />
+                <Legend
+                  verticalAlign="top"
+                  height={36}
+                  iconSize={8}
+                  iconType="circle"
+                  formatter={(value: string) => (
+                    <span className="text-xs">{value}</span>
+                  )}
+                />
                 <Line
                   yAxisId="left"
                   type="monotone"
                   dataKey="appointments"
                   stroke={COLORS[0]}
-                  strokeWidth={3}
+                  strokeWidth={2}
                   name="Appointments"
                   dot={false}
-                  activeDot={{ r: 6, className: "animate-pulse" }}
+                  activeDot={{ r: 4, className: "animate-pulse" }}
                 />
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="patients"
                   stroke={COLORS[1]}
-                  strokeWidth={3}
+                  strokeWidth={2}
                   name="New Patients"
                   dot={false}
-                  activeDot={{ r: 6, className: "animate-pulse" }}
+                  activeDot={{ r: 4, className: "animate-pulse" }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -334,3 +355,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+export default Dashboard;
