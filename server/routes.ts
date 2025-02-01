@@ -290,21 +290,113 @@ export function registerRoutes(app: Express): Server {
    *       500:
    *         description: Server error
    */
-  app.delete("/api/patients/:id", async (req, res) => {
+    app.delete("/api/patients/:id", async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
 
       await db.transaction(async (tx) => {
-        await tx.delete(appointments).where(eq(appointments.patientId, patientId));
-        await tx.delete(labResults).where(eq(labResults.patientId, patientId));
-        await tx.delete(carePlans).where(eq(carePlans.patientId, patientId));
-        await tx.delete(geneticProfiles).where(eq(geneticProfiles.patientId, patientId));
-        await tx.delete(biomarkerData).where(eq(biomarkerData.patientId, patientId));
-        await tx.delete(treatmentResponses).where(eq(treatmentResponses.patientId, patientId));
-        await tx.delete(environmentalFactors).where(eq(environmentalFactors.patientId, patientId));
-        await tx.delete(riskAssessments).where(eq(riskAssessments.patientId, patientId));
+        // Delete document translations first
+        await tx.delete(documentTranslations)
+          .where(
+            eq(
+              documentTranslations.documentId,
+              db.select({ id: medicalDocuments.id })
+                .from(medicalDocuments)
+                .where(eq(medicalDocuments.patientId, patientId))
+            )
+          );
 
-        await tx.delete(patients).where(eq(patients.id, patientId));
+        // Delete medical documents
+        await tx.delete(medicalDocuments)
+          .where(eq(medicalDocuments.patientId, patientId));
+
+        // Delete symptom analysis records
+        await tx.delete(symptomAnalysis)
+          .where(
+            eq(
+              symptomAnalysis.journalId,
+              db.select({ id: symptomJournals.id })
+                .from(symptomJournals)
+                .where(eq(symptomJournals.patientId, patientId))
+            )
+          );
+
+        // Delete symptom journals
+        await tx.delete(symptomJournals)
+          .where(eq(symptomJournals.patientId, patientId));
+
+        // Delete appointments and related teleconsultations
+        const appointmentIds = await tx.select({ id: appointments.id })
+          .from(appointments)
+          .where(eq(appointments.patientId, patientId));
+
+        for (const { id } of appointmentIds) {
+          await tx.delete(teleconsultations)
+            .where(eq(teleconsultations.appointmentId, id));
+        }
+        await tx.delete(appointments)
+          .where(eq(appointments.patientId, patientId));
+
+        // Delete lab results
+        await tx.delete(labResults)
+          .where(eq(labResults.patientId, patientId));
+
+        // Delete risk assessments
+        await tx.delete(riskAssessments)
+          .where(eq(riskAssessments.patientId, patientId));
+
+        // Delete biomarker data
+        await tx.delete(biomarkerData)
+          .where(eq(biomarkerData.patientId, patientId));
+
+        // Delete environmental factors
+        await tx.delete(environmentalFactors)
+          .where(eq(environmentalFactors.patientId, patientId));
+
+        // Delete treatment responses
+        await tx.delete(treatmentResponses)
+          .where(eq(treatmentResponses.patientId, patientId));
+
+        // Delete genetic profiles
+        await tx.delete(geneticProfiles)
+          .where(eq(geneticProfiles.patientId, patientId));
+
+        // Delete care plans and related records
+        const carePlanIds = await tx.select({ id: carePlans.id })
+          .from(carePlans)
+          .where(eq(carePlans.patientId, patientId));
+
+        for (const { id } of carePlanIds) {
+          // Delete progress entries for health goals
+          const healthGoalIds = await tx.select({ id: healthGoals.id })
+            .from(healthGoals)
+            .where(eq(healthGoals.carePlanId, id));
+
+          for (const { id: goalId } of healthGoalIds) {
+            await tx.delete(progressEntries)
+              .where(eq(progressEntries.healthGoalId, goalId));
+          }
+
+          // Delete health goals
+          await tx.delete(healthGoals)
+            .where(eq(healthGoals.carePlanId, id));
+
+          // Delete treatments
+          await tx.delete(treatments)
+            .where(eq(treatments.carePlanId, id));
+
+          // Delete medications
+          await tx.delete(medications)
+            .where(eq(medications.carePlanId, id));
+        }
+
+        // Delete care plans
+        await tx.delete(carePlans)
+          .where(eq(carePlans.patientId, patientId));
+
+        // Finally delete the patient
+        await tx.delete(patients)
+          .where(eq(patients.id, patientId));
       });
 
       res.json({ success: true, message: 'Patient and related records deleted successfully' });
