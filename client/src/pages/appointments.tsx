@@ -38,11 +38,21 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { insertAppointmentSchema } from "@db/schema";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
 import { RescheduleDialog } from "@/components/appointments/reschedule-dialog";
 import { z } from "zod";
+
+// Extended appointment type to include all properties we're using
+type ExtendedAppointment = SelectAppointment & {
+  patient?: { name: string };
+  duration?: number;
+  isTeleconsultation?: boolean;
+  meetingUrl?: string;
+};
 
 // Simplified appointment schema
 const createAppointmentSchema = insertAppointmentSchema.extend({
@@ -63,7 +73,7 @@ const DURATIONS = [
 
 export default function Appointments() {
   const [open, setOpen] = useState(false);
-  const [rescheduleAppointment, setRescheduleAppointment] = useState<SelectAppointment | null>(null);
+  const [rescheduleAppointment, setRescheduleAppointment] = useState<ExtendedAppointment | null>(null);
   const { appointments, createAppointment, updateStatus, updateAppointment } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
@@ -337,7 +347,7 @@ export default function Appointments() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {appointments.map((appointment) => (
+        {(appointments as ExtendedAppointment[]).map((appointment) => (
           <Card key={appointment.id} className="p-6">
             <div className="flex justify-between items-start">
               <div>
@@ -373,6 +383,7 @@ export default function Appointments() {
                     <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="confirmed">Confirmed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
