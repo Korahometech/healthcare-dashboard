@@ -58,6 +58,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { AnalyticsPDFReport } from "@/components/analytics/pdf-report";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const COLORS = [
   'hsl(var(--primary))',
@@ -131,38 +139,41 @@ export default function Analytics() {
 
   const isLoading = appointmentsLoading || patientsLoading || healthTrendsLoading;
 
-  const exportAnalytics = () => {
-    try {
-      const data = {
-        timeRange,
-        appointmentStats: {
-          total: appointments.length,
-          completionRate: calculateCompletionRate(appointments),
-          cancellationRate: calculateCancellationRate(appointments),
-        },
-        patientStats: {
-          total: patients.length,
-          ageDistribution: calculateAgeDistribution(patients),
-          genderDistribution: calculateGenderDistribution(patients),
-          healthConditions: calculateHealthConditionsDistribution(patients),
-          bmiDistribution: calculateBMIDistribution(patients),
-        },
-        healthTrends,
-      };
+  const analyticsData = {
+    timeRange,
+    appointmentStats: {
+      total: appointments.length,
+      completionRate: calculateCompletionRate(appointments),
+      cancellationRate: calculateCancellationRate(appointments),
+    },
+    patientStats: {
+      total: patients.length,
+      ageDistribution: calculateAgeDistribution(patients),
+      genderDistribution: calculateGenderDistribution(patients),
+      healthConditions: calculateHealthConditionsDistribution(patients),
+      bmiDistribution: calculateBMIDistribution(patients),
+    },
+    healthTrends,
+  };
 
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `healthcare-analytics-${format(new Date(), "yyyy-MM-dd")}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+  async function exportAnalytics(format: 'json' | 'pdf' = 'json') {
+    try {
+      if (format === 'json') {
+        const blob = new Blob([JSON.stringify(analyticsData, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const currentDate = new Date();
+        link.href = url;
+        link.download = `healthcare-analytics-${format(currentDate, "yyyy-MM-dd")}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
 
       toast({
         title: "Export Successful",
-        description: "Analytics data has been downloaded",
+        description: `Analytics data has been downloaded as ${format.toUpperCase()}`,
       });
     } catch (error) {
       toast({
@@ -171,7 +182,8 @@ export default function Analytics() {
         variant: "destructive",
       });
     }
-  };
+  }
+
 
   if (isLoading) {
     return (
@@ -191,7 +203,7 @@ export default function Analytics() {
   const appointmentTrends = getAppointmentsByTimeRange(appointments, appointmentTimeRange);
   const healthConditions = calculateHealthConditionsDistribution(patients);
   const bmiDistribution = calculateBMIDistribution(patients);
-    const appointmentOptimization = {
+  const appointmentOptimization = {
     peakHours: [
       { hour: '9 AM', count: 12 },
       { hour: '10 AM', count: 25 },
@@ -229,10 +241,35 @@ export default function Analytics() {
               Comprehensive healthcare insights and metrics
             </p>
           </div>
-          <Button onClick={exportAnalytics} variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export Analytics
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Export Analytics
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => exportAnalytics('json')}>
+                Export as JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <PDFDownloadLink
+                  document={<AnalyticsPDFReport data={analyticsData} />}
+                  fileName={`healthcare-analytics-${format(new Date(), "yyyy-MM-dd")}.pdf`}
+                >
+                  {({ loading }) => (
+                    <div className="flex items-center gap-2 w-full">
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Export as PDF"
+                      )}
+                    </div>
+                  )}
+                </PDFDownloadLink>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -369,7 +406,7 @@ export default function Analytics() {
                   <XAxis dataKey="date" fontSize={12} tickMargin={8} />
                   <YAxis fontSize={12} tickMargin={8} />
                   <RechartsTooltip content={<CustomTooltip />} />
-                  <Legend 
+                  <Legend
                     verticalAlign="top"
                     height={36}
                     iconSize={8}
