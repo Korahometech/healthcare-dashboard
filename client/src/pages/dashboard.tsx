@@ -12,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format, subMonths, isWithinInterval, startOfMonth, endOfMonth, subDays } from "date-fns";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { DashboardPDFReport } from "@/components/dashboard/pdf-report";
 import {
   BarChart,
   Bar,
@@ -117,47 +119,22 @@ function Dashboard() {
 
   const monthlyStats = getMonthlyStats();
 
-  const exportData = async () => {
-    try {
-      const data = {
-        summary: {
-          totalPatients: patients.length,
-          totalAppointments: appointments.length,
-          confirmedAppointments,
-          canceledAppointments,
-        },
-        appointmentsByStatus,
-        monthlyStats,
-        detailedAppointments: (appointments as AppointmentWithPatient[]).map(a => ({
-          id: a.id,
-          date: format(new Date(a.date), "PP"),
-          status: a.status,
-          patientName: a.patient?.name ?? "Unknown",
-          notes: a.notes ?? "",
-        })),
-      };
-
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `dashboard-report-${format(new Date(), "yyyy-MM-dd")}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Export Successful",
-        description: "Your dashboard report has been downloaded",
-      });
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "There was an error exporting your data",
-        variant: "destructive",
-      });
-    }
+  const reportData = {
+    summary: {
+      totalPatients: patients.length,
+      totalAppointments: appointments.length,
+      confirmedAppointments,
+      canceledAppointments,
+    },
+    appointmentsByStatus,
+    monthlyStats,
+    appointments: (appointments as AppointmentWithPatient[]).map(a => ({
+      id: a.id,
+      date: format(new Date(a.date), "PP"),
+      status: a.status,
+      patientName: a.patient?.name ?? "Unknown",
+      notes: a.notes ?? "",
+    })),
   };
 
   if (isLoading) {
@@ -180,10 +157,24 @@ function Dashboard() {
             Monitor your clinical practice performance
           </p>
         </div>
-        <Button onClick={exportData} variant="outline" size="lg" className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors">
-          <Download className="h-4 w-4" />
-          Export Report
-        </Button>
+        <PDFDownloadLink
+          document={<DashboardPDFReport data={reportData} />}
+          fileName={`healthcare-dashboard-${format(new Date(), "yyyy-MM-dd")}.pdf`}
+        >
+          {({ loading, error }) => (
+            <Button variant="outline" size="lg" className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors" disabled={loading}>
+              <Download className="h-4 w-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating PDF...
+                </>
+              ) : (
+                "Export Report (PDF)"
+              )}
+            </Button>
+          )}
+        </PDFDownloadLink>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
