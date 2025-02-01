@@ -47,6 +47,10 @@ export default function AuthPage() {
     registerMutation.mutate(fullData);
   };
 
+  const handleLogin = (data: LoginFormData) => {
+    loginMutation.mutate(data);
+  };
+
   return (
     <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
@@ -73,9 +77,7 @@ export default function AuthPage() {
               </TabsList>
               <TabsContent value="login" className="space-y-4">
                 <form
-                  onSubmit={loginForm.handleSubmit((data) =>
-                    loginMutation.mutate(data)
-                  )}
+                  onSubmit={loginForm.handleSubmit(handleLogin)}
                   className="space-y-4"
                 >
                   <div className="space-y-2">
