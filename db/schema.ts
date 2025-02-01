@@ -517,3 +517,53 @@ export const insertDocumentTranslationSchema = createInsertSchema(documentTransl
 export const selectDocumentTranslationSchema = createSelectSchema(documentTranslations);
 export type InsertDocumentTranslation = z.infer<typeof insertDocumentTranslationSchema>;
 export type SelectDocumentTranslation = z.infer<typeof selectDocumentTranslationSchema>;
+
+// Add after the existing tables
+export const symptomJournals = pgTable("symptom_journals", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id),
+  symptoms: text("symptoms").array(),
+  severity: integer("severity").notNull(),
+  mood: text("mood").notNull(),
+  notes: text("notes"),
+  dateRecorded: timestamp("date_recorded").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+export const symptomAnalysis = pgTable("symptom_analysis", {
+  id: serial("id").primaryKey(),
+  journalId: integer("journal_id").references(() => symptomJournals.id),
+  analysis: jsonb("analysis").notNull(),
+  sentiment: text("sentiment").notNull(),
+  suggestedActions: text("suggested_actions").array(),
+  aiConfidence: real("ai_confidence"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Add to the existing relations section
+export const symptomJournalsRelations = relations(symptomJournals, ({ one, many }) => ({
+  patient: one(patients, {
+    fields: [symptomJournals.patientId],
+    references: [patients.id],
+  }),
+  analysis: many(symptomAnalysis),
+}));
+
+export const symptomAnalysisRelations = relations(symptomAnalysis, ({ one }) => ({
+  journal: one(symptomJournals, {
+    fields: [symptomAnalysis.journalId],
+    references: [symptomJournals.id],
+  }),
+}));
+
+// Add to the exports section
+export const insertSymptomJournalSchema = createInsertSchema(symptomJournals);
+export const selectSymptomJournalSchema = createSelectSchema(symptomJournals);
+export type InsertSymptomJournal = z.infer<typeof insertSymptomJournalSchema>;
+export type SelectSymptomJournal = z.infer<typeof selectSymptomJournalSchema>;
+
+export const insertSymptomAnalysisSchema = createInsertSchema(symptomAnalysis);
+export const selectSymptomAnalysisSchema = createSelectSchema(symptomAnalysis);
+export type InsertSymptomAnalysis = z.infer<typeof insertSymptomAnalysisSchema>;
+export type SelectSymptomAnalysis = z.infer<typeof selectSymptomAnalysisSchema>;

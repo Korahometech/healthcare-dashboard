@@ -19,12 +19,17 @@ import {
   environmentalFactors,
   riskAssessments,
   doctors,
-  specialties
+  specialties,
+  symptomJournals,
+  symptomAnalysis
 } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { sendEmail, generateAppointmentEmail } from "./lib/email";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
+import OpenAI from "openai";
+
+const openai = new OpenAI();
 
 export function registerRoutes(app: Express): Server {
   // Swagger UI route
@@ -680,6 +685,158 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+  /**
+   * @swagger
+   * /api/patients/{patientId}/symptom-journals:
+   *   post:
+   *     summary: Create a symptom journal entry with AI analysis
+   *     tags: [Symptoms]
+   *     parameters:
+   *       - in: path
+   *         name: patientId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - symptoms
+   *               - severity
+   *               - mood
+   *             properties:
+   *               symptoms:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *               severity:
+   *                 type: integer
+   *                 minimum: 1
+   *                 maximum: 10
+   *               mood:
+   *                 type: string
+   *               notes:
+   *                 type: string
+   *     responses:
+   *       201:
+   *         description: Journal entry created with AI analysis
+   */
+  app.post("/api/patients/:patientId/symptom-journals", async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+
+      // Create journal entry
+      const [journal] = await db
+        .insert(symptomJournals)
+        .values({
+          ...req.body,
+          patientId,
+        })
+        .returning();
+
+      // Get patient's history for context
+      const patientHistory = await db.query.symptomJournals.findMany({
+        where: eq(symptomJournals.patientId, patientId),
+        orderBy: [desc(symptomJournals.dateRecorded)],
+        limit: 5,
+      });
+
+      // Generate AI analysis
+      const prompt = {
+        role: "system",
+        content: "You are a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
+      };
+
+      const userMessage = {
+        role: "user",
+        content: `
+Current Entry:
+Symptoms: ${req.body.symptoms.join(", ")}
+Severity: ${req.body.severity}
+Mood: ${req.body.mood}
+Notes: ${req.body.notes || "None"}
+
+Recent History:
+${patientHistory.map(h => `
+Date: ${h.dateRecorded}
+Symptoms: ${h.symptoms.join(", ")}
+Severity: ${h.severity}
+Mood: ${h.mood}
+`).join("\n")}
+`
+      };
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [prompt, userMessage],
+        response_format: { type: "json_object" },
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content);
+
+      // Save AI analysis
+      const [savedAnalysis] = await db
+        .insert(symptomAnalysis)
+        .values({
+          journalId: journal.id,
+          analysis: analysis.analysis,
+          sentiment: analysis.sentiment,
+          suggestedActions: analysis.suggestedActions,
+          aiConfidence: analysis.confidence,
+        })
+        .returning();
+
+      res.status(201).json({
+        journal,
+        analysis: savedAnalysis,
+      });
+    } catch (error: any) {
+      console.error("Error creating symptom journal:", error);
+      res.status(500).json({
+        error: "Failed to create symptom journal",
+        details: error.message,
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/patients/{patientId}/symptom-journals:
+   *   get:
+   *     summary: Get patient's symptom journal entries with analysis
+   *     tags: [Symptoms]
+   *     parameters:
+   *       - in: path
+   *         name: patientId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: List of journal entries with analysis
+   */
+  app.get("/api/patients/:patientId/symptom-journals", async (req, res) => {
+    try {
+      const journals = await db.query.symptomJournals.findMany({
+        where: eq(symptomJournals.patientId, parseInt(req.params.patientId)),
+        orderBy: [desc(symptomJournals.dateRecorded)],
+        with: {
+          analysis: true,
+        },
+      });
+      res.json(journals);
+    } catch (error: any) {
+      console.error("Error fetching symptom journals:", error);
+      res.status(500).json({
+        error: "Failed to fetch symptom journals",
+        details: error.message,
+      });
+    }
+  });
+
 
   const httpServer = createServer(app);
     return httpServer;
