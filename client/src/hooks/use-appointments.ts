@@ -70,11 +70,25 @@ export function useAppointments() {
     },
   });
 
+  const deleteAppointment = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+    },
+  });
+
   return {
     appointments,
     isLoading,
     createAppointment: createAppointment.mutateAsync,
     updateStatus: updateStatus.mutateAsync,
     updateAppointment: updateAppointment.mutateAsync,
+    deleteAppointment: deleteAppointment.mutateAsync,
   };
 }
