@@ -156,34 +156,6 @@ export default function Analytics() {
     healthTrends,
   };
 
-  async function exportAnalytics(format: 'json' | 'pdf' = 'json') {
-    try {
-      if (format === 'json') {
-        const blob = new Blob([JSON.stringify(analyticsData, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        const currentDate = new Date();
-        link.href = url;
-        link.download = `healthcare-analytics-${format(currentDate, "yyyy-MM-dd")}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }
-
-      toast({
-        title: "Export Successful",
-        description: `Analytics data has been downloaded as ${format.toUpperCase()}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "There was an error exporting the data",
-        variant: "destructive",
-      });
-    }
-  }
-
 
   if (isLoading) {
     return (
@@ -203,7 +175,7 @@ export default function Analytics() {
   const appointmentTrends = getAppointmentsByTimeRange(appointments, appointmentTimeRange);
   const healthConditions = calculateHealthConditionsDistribution(patients);
   const bmiDistribution = calculateBMIDistribution(patients);
-  const appointmentOptimization = {
+    const appointmentOptimization = {
     peakHours: [
       { hour: '9 AM', count: 12 },
       { hour: '10 AM', count: 25 },
@@ -241,35 +213,24 @@ export default function Analytics() {
               Comprehensive healthcare insights and metrics
             </p>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
+          <PDFDownloadLink
+            document={<AnalyticsPDFReport data={analyticsData} />}
+            fileName={`healthcare-analytics-${format(new Date(), "yyyy-MM-dd")}.pdf`}
+          >
+            {({ loading, error }) => (
+              <Button variant="outline" className="gap-2" disabled={loading}>
                 <Download className="h-4 w-4" />
-                Export Analytics
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  "Export Analytics (PDF)"
+                )}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => exportAnalytics('json')}>
-                Export as JSON
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <PDFDownloadLink
-                  document={<AnalyticsPDFReport data={analyticsData} />}
-                  fileName={`healthcare-analytics-${format(new Date(), "yyyy-MM-dd")}.pdf`}
-                >
-                  {({ loading }) => (
-                    <div className="flex items-center gap-2 w-full">
-                      {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Export as PDF"
-                      )}
-                    </div>
-                  )}
-                </PDFDownloadLink>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+          </PDFDownloadLink>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
