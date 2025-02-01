@@ -855,7 +855,7 @@ Compare this with historical patterns and provide personalized insights.`
           };
 
           const response = await openai.chat.completions.create({
-            model: "gpt-4",
+            model: "gpt-3.5-turbo",
             messages: [prompt, userMessage],
             response_format: { type: "json_object" },
           });
