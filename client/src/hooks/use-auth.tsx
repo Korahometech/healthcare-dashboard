@@ -28,13 +28,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     data: user,
     error,
     isLoading,
-  } = useQuery<SelectUser | null, Error>({
-    queryKey: ["/api/user"] as const,
-    queryFn: getQueryFn({ on401: "returnNull" }) as QueryFunction<SelectUser | null, QueryKey>,
+  } = useQuery<SelectUser | null>({
+    queryKey: ["/api/user"],
+    queryFn: async ({ queryKey }) => {
+      const res = await fetch(queryKey[0] as string, {
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          return null;
+        }
+        throw new Error(`${res.status}: ${await res.text()}`);
+      }
+
+      return res.json();
+    },
   });
 
   const loginMutation = useMutation<SelectUser, Error, LoginData>({
-    mutationFn: async (credentials: LoginData) => {
+    mutationFn: async (credentials) => {
       const res = await apiRequest("POST", "/api/login", credentials);
       return res.json();
     },
@@ -51,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const registerMutation = useMutation<SelectUser, Error, InsertUser>({
-    mutationFn: async (newUser: InsertUser) => {
+    mutationFn: async (newUser) => {
       const res = await apiRequest("POST", "/api/register", newUser);
       return res.json();
     },
