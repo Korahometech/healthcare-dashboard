@@ -30,15 +30,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
 
   const Sidebar = () => (
-    <div className="space-y-4 py-4">
+    <div className="space-y-6 py-4">
       <div className="px-3 py-2">
-        <h2 className="mb-2 px-4 text-lg font-semibold">Medical Admin</h2>
+        <h2 className="mb-4 px-4 text-xl font-semibold tracking-tight">
+          Medical Admin
+        </h2>
         <div className="space-y-1">
           {menuItems.map(({ icon: Icon, label, href }) => (
             <Link key={href} href={href}>
               <Button
                 variant={location === href ? "secondary" : "ghost"}
-                className="w-full justify-start"
+                className="w-full justify-start transition-colors duration-200"
               >
                 <Icon className="mr-2 h-4 w-4" />
                 {t(label)}
@@ -56,9 +58,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background antialiased">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-64 border-r">
+      <aside className="hidden lg:block w-64 border-r bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
         <ScrollArea className="h-screen">
           <Sidebar />
         </ScrollArea>
@@ -69,9 +71,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <SheetTrigger asChild>
           <Button
             variant="ghost"
+            size="icon"
             className="lg:hidden fixed left-4 top-4 z-40"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="p-0 w-64">
@@ -80,7 +83,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       {/* Main Content */}
-      <main className="flex-1 p-8">{children}</main>
+      <main className="flex-1 overflow-auto">
+        <div className="container mx-auto p-6 lg:p-8 animate-in fade-in slide-in duration-500">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }
