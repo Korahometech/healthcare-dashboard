@@ -93,7 +93,7 @@ export const insertPatientSchema = createInsertSchema(patients, {
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email").optional().nullable(),
   phone: z.string().optional().nullable(),
-  dateOfBirth: z.date().optional().nullable(),
+  dateOfBirth: z.string().optional().nullable().transform((val) => val ? new Date(val) : null),
   status: z.enum(["active", "inactive"]).default("active"),
   healthConditions: z.array(z.string()).optional().default([]),
   medications: z.array(z.string()).optional().default([]),
