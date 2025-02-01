@@ -597,10 +597,10 @@ export function registerRoutes(app: Express): Server {
 
   /**
    * @swagger
-   * /api/appointments/{id}/status:
+   * /api/appointments/{id}:
    *   put:
-   *     summary: Update appointment status
-   *     description: Update the status of an existing appointment
+   *     summary: Update appointment details
+   *     description: Update an existing appointment including rescheduling
    *     tags: [Appointments]
    *     parameters:
    *       - in: path
@@ -615,12 +615,15 @@ export function registerRoutes(app: Express): Server {
    *         application/json:
    *           schema:
    *             type: object
-   *             required:
-   *               - status
    *             properties:
+   *               date:
+   *                 type: string
+   *                 format: date-time
    *               status:
    *                 type: string
-   *                 enum: [scheduled, confirmed, cancelled]
+   *                 enum: [scheduled, confirmed, cancelled, rescheduled]
+   *               reschedulingReason:
+   *                 type: string
    *     responses:
    *       200:
    *         description: Updated appointment
@@ -629,14 +632,74 @@ export function registerRoutes(app: Express): Server {
    *             schema:
    *               $ref: '#/components/schemas/Appointment'
    */
-  app.put("/api/appointments/:id/status", async (req, res) => {
-    const { status } = req.body;
-    const appointment = await db
-      .update(appointments)
-      .set({ status })
-      .where(eq(appointments.id, parseInt(req.params.id)))
-      .returning();
-    res.json(appointment[0]);
+  app.put("/api/appointments/:id", async (req, res) => {
+    try {
+      const appointmentId = parseInt(req.params.id);
+      const { date, status, reschedulingReason } = req.body;
+
+      const [updatedAppointment] = await db.transaction(async (tx) => {
+        const [appointment] = await tx
+          .update(appointments)
+          .set({
+            date: date ? new Date(date) : undefined,
+            status,
+            notes: reschedulingReason 
+              ? `Rescheduled: ${reschedulingReason}`
+              : undefined,
+          })
+          .where(eq(appointments.id, appointmentId))
+          .returning();
+
+        if (appointment.teleconsultation) {
+          await tx
+            .update(teleconsultations)
+            .set({
+              startTime: date ? new Date(date) : undefined,
+              status: status,
+            })
+            .where(eq(teleconsultations.appointmentId, appointmentId));
+        }
+
+        return [appointment];
+      });
+
+      const appointmentWithDetails = await db.query.appointments.findFirst({
+        where: eq(appointments.id, appointmentId),
+        with: {
+          patient: true,
+          doctor: true,
+          teleconsultation: true,
+        },
+      });
+
+      // Send email notifications about the rescheduling
+      if (appointmentWithDetails?.patient && appointmentWithDetails.doctor) {
+        const emailData = generateAppointmentEmail({
+          date: appointmentWithDetails.date,
+          patient: appointmentWithDetails.patient,
+          doctor: appointmentWithDetails.doctor,
+          notes: appointmentWithDetails.notes || undefined,
+          isTeleconsultation: !!appointmentWithDetails.teleconsultation,
+          meetingUrl: appointmentWithDetails.teleconsultation?.meetingUrl,
+          isRescheduled: true
+        });
+
+        Promise.all([
+          sendEmail(emailData.patient),
+          sendEmail(emailData.doctor),
+        ]).catch((error) => {
+          console.error('Error sending rescheduling notification emails:', error);
+        });
+      }
+
+      res.json(appointmentWithDetails);
+    } catch (error: any) {
+      console.error('Error updating appointment:', error);
+      res.status(500).json({
+        error: 'Failed to update appointment',
+        details: error.message
+      });
+    }
   });
 
   /**
