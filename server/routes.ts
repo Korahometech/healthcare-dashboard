@@ -21,15 +21,51 @@ import {
   doctors,
   specialties,
   symptomJournals,
-  symptomAnalysis
+  symptomAnalysis,
+  medicalDocuments,
+  documentTranslations
 } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import { sendEmail, generateAppointmentEmail } from "./lib/email";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import OpenAI from "openai";
+import multer from "multer";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
 
 const openai = new OpenAI();
+
+// Configure multer for file upload
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = uuidv4();
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type. Only PDF and Word documents are allowed."));
+    }
+  },
+});
+
 
 export function registerRoutes(app: Express): Server {
   // Swagger UI route
@@ -738,6 +774,78 @@ export function registerRoutes(app: Express): Server {
       console.error("Error fetching symptom journals:", error);
       res.status(500).json({
         error: "Failed to fetch symptom journals",
+        details: error.message,
+      });
+    }
+  });
+
+  app.post(
+    "/api/medical-documents/upload",
+    upload.single("file"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+  
+        const { originalLanguage = "en" } = req.body;
+  
+        const [document] = await db
+          .insert(medicalDocuments)
+          .values({
+            fileName: req.file.originalname,
+            fileType: req.file.mimetype,
+            fileSize: req.file.size,
+            originalLanguage,
+            secureUrl: req.file.path,
+            status: "completed",
+          })
+          .returning();
+  
+        res.status(201).json(document);
+      } catch (error: any) {
+        console.error("Error uploading medical document:", error);
+        res.status(500).json({
+          error: "Failed to upload document",
+          details: error.message,
+        });
+      }
+    }
+  );
+  
+  app.get("/api/medical-documents", async (req, res) => {
+    try {
+      const documents = await db.query.medicalDocuments.findMany({
+        orderBy: [desc(medicalDocuments.createdAt)],
+      });
+      res.json(documents);
+    } catch (error: any) {
+      console.error("Error fetching medical documents:", error);
+      res.status(500).json({
+        error: "Failed to fetch documents",
+        details: error.message,
+      });
+    }
+  });
+  
+  app.post("/api/medical-documents/translate", async (req, res) => {
+    try {
+      const { documentId, targetLanguage } = req.body;
+  
+      const [translation] = await db
+        .insert(documentTranslations)
+        .values({
+          documentId,
+          targetLanguage,
+          status: "pending",
+        })
+        .returning();
+  
+      res.json(translation);
+    } catch (error: any) {
+      console.error("Error initiating document translation:", error);
+      res.status(500).json({
+        error: "Failed to initiate translation",
         details: error.message,
       });
     }
