@@ -5,7 +5,7 @@ import { useDoctors } from "@/hooks/use-doctors";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Video } from "lucide-react";
+import { Calendar as CalendarIcon, Video, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -41,19 +42,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
-import type { InsertAppointment, SelectAppointment } from "@db/schema";
 import { insertAppointmentSchema } from "@db/schema";
+import type { InsertAppointment, SelectAppointment } from "@db/schema";
 import { z } from "zod";
 
-// Update the appointment schema to include doctorId
+// Simplified appointment schema
 const createAppointmentSchema = insertAppointmentSchema.extend({
   doctorId: z.number(),
-  isTeleconsultation: z.boolean().optional(),
+  duration: z.number().default(30),
+  isTeleconsultation: z.boolean().default(false),
   meetingUrl: z.string().url().optional(),
-  duration: z.number().min(15).max(120).optional(),
 });
 
 type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>;
+
+const DURATIONS = [
+  { value: 15, label: "15 minutes" },
+  { value: 30, label: "30 minutes (recommended)" },
+  { value: 45, label: "45 minutes" },
+  { value: 60, label: "1 hour" },
+];
 
 export default function Appointments() {
   const [open, setOpen] = useState(false);
@@ -66,9 +74,8 @@ export default function Appointments() {
     resolver: zodResolver(createAppointmentSchema),
     defaultValues: {
       status: "scheduled",
-      notes: "",
-      isTeleconsultation: false,
       duration: 30,
+      isTeleconsultation: false,
     },
   });
 
@@ -76,18 +83,15 @@ export default function Appointments() {
 
   const onSubmit = async (values: CreateAppointmentInput) => {
     try {
-      // Ensure the date is properly formatted
-      const formattedValues = {
+      await createAppointment({
         ...values,
-        date: values.date instanceof Date ? values.date.toISOString() : new Date(values.date).toISOString(),
-      };
-
-      await createAppointment(formattedValues);
+        date: values.date instanceof Date ? values.date : new Date(values.date),
+      });
       setOpen(false);
       form.reset();
       toast({
         title: "Success",
-        description: "Appointment created successfully",
+        description: "Appointment scheduled successfully",
       });
     } catch (error: any) {
       toast({
@@ -101,85 +105,100 @@ export default function Appointments() {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Appointments</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Appointments</h1>
+          <p className="text-muted-foreground mt-1">
+            Schedule and manage patient appointments
+          </p>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>Add Appointment</Button>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Appointment
+            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>New Appointment</DialogTitle>
+              <DialogTitle>Schedule New Appointment</DialogTitle>
+              <DialogDescription>
+                Fill in the details to schedule a new patient appointment.
+              </DialogDescription>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="patientId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Patient</FormLabel>
-                      <Select
-                        onValueChange={(value) =>
-                          field.onChange(parseInt(value))
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select patient" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {patients.map((patient) => (
-                            <SelectItem
-                              key={patient.id}
-                              value={patient.id.toString()}
-                            >
-                              {patient.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="doctorId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Doctor</FormLabel>
-                      <Select
-                        onValueChange={(value) =>
-                          field.onChange(parseInt(value))
-                        }
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select doctor" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {doctors.map((doctor) => (
-                            <SelectItem
-                              key={doctor.id}
-                              value={doctor.id.toString()}
-                            >
-                              {`${doctor.name} (${doctor.specialty?.name || 'General'})`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="patientId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Patient</FormLabel>
+                        <Select
+                          onValueChange={(value) =>
+                            field.onChange(parseInt(value))
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select patient" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {patients.map((patient) => (
+                              <SelectItem
+                                key={patient.id}
+                                value={patient.id.toString()}
+                              >
+                                {patient.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="doctorId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Doctor</FormLabel>
+                        <Select
+                          onValueChange={(value) =>
+                            field.onChange(parseInt(value))
+                          }
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select doctor" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {doctors.map((doctor) => (
+                              <SelectItem
+                                key={doctor.id}
+                                value={doctor.id.toString()}
+                              >
+                                {doctor.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
                   control={form.control}
                   name="date"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Date</FormLabel>
+                      <FormLabel>Date & Time</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -205,6 +224,7 @@ export default function Appointments() {
                             selected={field.value}
                             onSelect={field.onChange}
                             disabled={(date) => date < new Date()}
+                            initialFocus
                           />
                         </PopoverContent>
                       </Popover>
@@ -212,15 +232,47 @@ export default function Appointments() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration</FormLabel>
+                      <Select
+                        onValueChange={(value) =>
+                          field.onChange(parseInt(value))
+                        }
+                        defaultValue={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select duration" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {DURATIONS.map((duration) => (
+                            <SelectItem
+                              key={duration.value}
+                              value={duration.value.toString()}
+                            >
+                              {duration.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="isTeleconsultation"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                       <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          Teleconsultation
-                        </FormLabel>
+                        <FormLabel>Teleconsultation</FormLabel>
                         <div className="text-sm text-muted-foreground">
                           Schedule a video consultation
                         </div>
@@ -234,66 +286,28 @@ export default function Appointments() {
                     </FormItem>
                   )}
                 />
+
                 {isTeleconsultation && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="meetingUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Meeting URL</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://meet.example.com/room" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="duration"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Duration (minutes)</FormLabel>
-                          <Select
-                            onValueChange={(value) =>
-                              field.onChange(parseInt(value))
-                            }
-                            defaultValue={field.value?.toString()}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select duration" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="15">15 minutes</SelectItem>
-                              <SelectItem value="30">30 minutes</SelectItem>
-                              <SelectItem value="45">45 minutes</SelectItem>
-                              <SelectItem value="60">1 hour</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
+                  <FormField
+                    control={form.control}
+                    name="meetingUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Meeting URL</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="https://meet.example.com/room"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 )}
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
                 <Button type="submit" className="w-full">
-                  Create Appointment
+                  Schedule Appointment
                 </Button>
               </form>
             </Form>
@@ -302,25 +316,25 @@ export default function Appointments() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {appointments.map((appointment: SelectAppointment & { patient?: { name: string }, doctor?: { name: string }, teleconsultation?: { meetingUrl: string, duration: number } }) => (
-          <Card key={appointment.id} className="space-y-4 p-6">
+        {appointments.map((appointment) => (
+          <Card key={appointment.id} className="p-6">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-semibold">
                   {appointment.patient?.name}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Doctor: {appointment.doctor?.name}
+                  {format(new Date(appointment.date), "PPP p")}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {format(new Date(appointment.date), "PPP")}
-                </p>
-                {appointment.teleconsultation && (
-                  <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                {appointment.duration && (
+                  <p className="text-sm text-muted-foreground">
+                    Duration: {appointment.duration} minutes
+                  </p>
+                )}
+                {appointment.isTeleconsultation && (
+                  <div className="flex items-center gap-2 mt-2">
                     <Video className="h-4 w-4" />
-                    <span>
-                      {appointment.teleconsultation.duration} min consultation
-                    </span>
+                    <span className="text-sm">Video Consultation</span>
                   </div>
                 )}
               </div>
@@ -340,16 +354,18 @@ export default function Appointments() {
                 </SelectContent>
               </Select>
             </div>
+
             {appointment.notes && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground mt-4">
                 {appointment.notes}
               </p>
             )}
-            {appointment.teleconsultation && (
+
+            {appointment.meetingUrl && (
               <Button
                 variant="outline"
-                className="w-full"
-                onClick={() => window.open(appointment.teleconsultation?.meetingUrl, '_blank')}
+                className="w-full mt-4"
+                onClick={() => window.open(appointment.meetingUrl, '_blank')}
               >
                 <Video className="mr-2 h-4 w-4" />
                 Join Meeting
