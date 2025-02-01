@@ -29,7 +29,7 @@ export const patients = pgTable("patients", {
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
-  dateOfBirth: date("date_of_birth"),
+  dateOfBirth: text("date_of_birth"),
   status: text("status").default("active"),
   healthConditions: text("health_conditions").array(),
   medications: text("medications").array(),
