@@ -30,6 +30,19 @@ export const patients = pgTable("patients", {
   email: text("email"),
   phone: text("phone"),
   dateOfBirth: date("date_of_birth"),
+  status: text("status").default("active"),
+  healthConditions: text("health_conditions").array(),
+  medications: text("medications").array(),
+  allergies: text("allergies").array(),
+  chronicConditions: text("chronic_conditions").array(),
+  surgicalHistory: text("surgical_history").array(),
+  familyHistory: text("family_history").array(),
+  vaccinationHistory: text("vaccination_history").array(),
+  smokingStatus: text("smoking_status").default("never"),
+  exerciseFrequency: text("exercise_frequency").default("never"),
+  preferredCommunication: text("preferred_communication").default("email"),
+  emergencyContact: text("emergency_contact"),
+  medicalNotes: text("medical_notes"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
@@ -76,9 +89,31 @@ export const insertDoctorSchema = createInsertSchema(doctors, {
   startDate: z.date().optional().nullable(),
 });
 
+export const insertPatientSchema = createInsertSchema(patients, {
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email").optional().nullable(),
+  phone: z.string().optional().nullable(),
+  dateOfBirth: z.date().optional().nullable(),
+  status: z.enum(["active", "inactive"]).default("active"),
+  healthConditions: z.array(z.string()).optional().default([]),
+  medications: z.array(z.string()).optional().default([]),
+  allergies: z.array(z.string()).optional().default([]),
+  chronicConditions: z.array(z.string()).optional().default([]),
+  surgicalHistory: z.array(z.string()).optional().default([]),
+  familyHistory: z.array(z.string()).optional().default([]),
+  vaccinationHistory: z.array(z.string()).optional().default([]),
+  smokingStatus: z.enum(["never", "former", "current"]).default("never"),
+  exerciseFrequency: z.enum(["never", "occasional", "regular"]).default("never"),
+  preferredCommunication: z.enum(["email", "phone", "sms"]).default("email"),
+  emergencyContact: z.string().optional().nullable(),
+  medicalNotes: z.string().optional().nullable(),
+});
+
 export const insertAppointmentSchema = createInsertSchema(appointments);
 
 export type InsertDoctor = z.infer<typeof insertDoctorSchema>;
 export type SelectDoctor = typeof doctors.$inferSelect;
+export type InsertPatient = z.infer<typeof insertPatientSchema>;
+export type SelectPatient = typeof patients.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type SelectAppointment = typeof appointments.$inferSelect;

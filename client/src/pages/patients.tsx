@@ -193,11 +193,11 @@ export default function Patients() {
 
   const onSubmit = async (values: InsertPatient) => {
     try {
-      const formattedValues = {
+      await createPatient({
         ...values,
-        dateOfBirth: values.dateOfBirth ? new Date(values.dateOfBirth).toISOString() : undefined,
-      };
-      await createPatient(formattedValues);
+        dateOfBirth: values.dateOfBirth ? new Date(values.dateOfBirth) : null,
+        emergencyContact: values.emergencyContact ? JSON.stringify(values.emergencyContact) : null,
+      });
       setOpen(false);
       form.reset();
       toast({
@@ -274,7 +274,7 @@ export default function Patients() {
                             </FormItem>
                           )}
                         />
-                        <FormField
+                         <FormField
                           control={form.control}
                           name="dateOfBirth"
                           render={({ field }) => (
@@ -291,7 +291,7 @@ export default function Patients() {
                                       )}
                                     >
                                       {field.value ? (
-                                        format(field.value, "PP")
+                                        format(new Date(field.value), "PPP")
                                       ) : (
                                         <span>Pick a date</span>
                                       )}
@@ -302,11 +302,10 @@ export default function Patients() {
                                 <PopoverContent className="w-auto p-0" align="start">
                                   <Calendar
                                     mode="single"
-                                    selected={field.value}
+                                    selected={field.value ? new Date(field.value) : undefined}
                                     onSelect={field.onChange}
-                                    disabled={(date) =>
-                                      date > new Date()
-                                    }
+                                    disabled={(date) => date > new Date()}
+                                    initialFocus
                                   />
                                 </PopoverContent>
                               </Popover>
