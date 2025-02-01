@@ -7,6 +7,11 @@ type CreateAppointmentInput = InsertAppointment & {
   duration?: number;
 };
 
+type UpdateAppointmentInput = Partial<InsertAppointment> & {
+  id: number;
+  reschedulingReason?: string;
+};
+
 export function useAppointments() {
   const queryClient = useQueryClient();
 
@@ -50,10 +55,26 @@ export function useAppointments() {
     },
   });
 
+  const updateAppointment = useMutation({
+    mutationFn: async (appointment: UpdateAppointmentInput) => {
+      const res = await fetch(`/api/appointments/${appointment.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(appointment),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+    },
+  });
+
   return {
     appointments,
     isLoading,
     createAppointment: createAppointment.mutateAsync,
     updateStatus: updateStatus.mutateAsync,
+    updateAppointment: updateAppointment.mutateAsync,
   };
 }

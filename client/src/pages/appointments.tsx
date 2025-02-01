@@ -5,7 +5,7 @@ import { useDoctors } from "@/hooks/use-doctors";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Video, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Video, Plus, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,12 +38,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { insertAppointmentSchema } from "@db/schema";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
+import { RescheduleDialog } from "@/components/appointments/reschedule-dialog";
 import { z } from "zod";
 
 // Simplified appointment schema
@@ -65,7 +63,8 @@ const DURATIONS = [
 
 export default function Appointments() {
   const [open, setOpen] = useState(false);
-  const { appointments, createAppointment, updateStatus } = useAppointments();
+  const [rescheduleAppointment, setRescheduleAppointment] = useState<SelectAppointment | null>(null);
+  const { appointments, createAppointment, updateStatus, updateAppointment } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
@@ -92,6 +91,28 @@ export default function Appointments() {
       toast({
         title: "Success",
         description: "Appointment scheduled successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReschedule = async (appointmentId: number, newDate: Date, reason: string) => {
+    try {
+      await updateAppointment({
+        id: appointmentId,
+        date: newDate,
+        reschedulingReason: reason,
+        status: 'rescheduled'
+      });
+
+      toast({
+        title: "Appointment Rescheduled",
+        description: "The appointment has been successfully rescheduled.",
       });
     } catch (error: any) {
       toast({
@@ -338,21 +359,32 @@ export default function Appointments() {
                   </div>
                 )}
               </div>
-              <Select
-                defaultValue={appointment.status}
-                onValueChange={(value) =>
-                  updateStatus({ id: appointment.id, status: value })
-                }
-              >
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Select
+                  defaultValue={appointment.status}
+                  onValueChange={(value) =>
+                    updateStatus({ id: appointment.id, status: value })
+                  }
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setRescheduleAppointment(appointment)}
+                >
+                  <Clock className="mr-2 h-4 w-4" />
+                  Reschedule
+                </Button>
+              </div>
             </div>
 
             {appointment.notes && (
@@ -374,6 +406,17 @@ export default function Appointments() {
           </Card>
         ))}
       </div>
+
+      {rescheduleAppointment && (
+        <RescheduleDialog
+          isOpen={!!rescheduleAppointment}
+          onClose={() => setRescheduleAppointment(null)}
+          onReschedule={(date, reason) => 
+            handleReschedule(rescheduleAppointment.id, date, reason)
+          }
+          currentDate={new Date(rescheduleAppointment.date)}
+        />
+      )}
     </div>
   );
 }
