@@ -75,7 +75,6 @@ export default function Doctors() {
       qualification: "",
       experience: 0,
       availableDays: [],
-      startDate: new Date(),
     },
   });
 
@@ -135,7 +134,8 @@ export default function Doctors() {
                           <Input
                             type="email"
                             placeholder="doctor@example.com"
-                            {...field}
+                            value={field.value || ""}
+                            onChange={field.onChange}
                           />
                         </FormControl>
                         <FormMessage />
@@ -151,7 +151,11 @@ export default function Doctors() {
                       <FormItem>
                         <FormLabel>Phone</FormLabel>
                         <FormControl>
-                          <Input placeholder="+1234567890" {...field} />
+                          <Input 
+                            placeholder="+1234567890" 
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -167,6 +171,7 @@ export default function Doctors() {
                           onValueChange={(value) =>
                             field.onChange(parseInt(value))
                           }
+                          value={field.value?.toString()}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -197,7 +202,11 @@ export default function Doctors() {
                       <FormItem>
                         <FormLabel>Qualification</FormLabel>
                         <FormControl>
-                          <Input placeholder="MD, PhD" {...field} />
+                          <Input 
+                            placeholder="MD, PhD" 
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -252,7 +261,7 @@ export default function Doctors() {
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
-                            selected={field.value}
+                            selected={field.value || undefined}
                             onSelect={field.onChange}
                             initialFocus
                           />
@@ -317,7 +326,7 @@ export default function Doctors() {
                   Qualification: {doctor.qualification}
                 </p>
               )}
-              {doctor.experience !== undefined && doctor.experience > 0 && (
+              {doctor.experience !== null && doctor.experience > 0 && (
                 <p className="text-sm text-muted-foreground">
                   Experience: {doctor.experience} years
                 </p>

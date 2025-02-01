@@ -380,13 +380,25 @@ export function registerRoutes(app: Express): Server {
    *               $ref: '#/components/schemas/Appointment'
    */
   app.get("/api/appointments", async (req, res) => {
-    const allAppointments = await db.query.appointments.findMany({
-      with: {
-        patient: true,
-        teleconsultation: true,
-      },
-    });
-    res.json(allAppointments);
+    try {
+      const allAppointments = await db.query.appointments.findMany({
+        with: {
+          patient: true,
+          doctor: {
+            with: {
+              specialty: true,
+            },
+          },
+        },
+      });
+      res.json(allAppointments);
+    } catch (error: any) {
+      console.error('Error fetching appointments:', error);
+      res.status(500).json({
+        error: 'Failed to fetch appointments',
+        details: error.message
+      });
+    }
   });
 
   app.post("/api/appointments", async (req, res) => {
@@ -548,7 +560,6 @@ export function registerRoutes(app: Express): Server {
         with: {
           specialty: true,
         },
-        orderBy: (doctors, { desc }) => [desc(doctors.createdAt)],
       });
       res.json(allDoctors);
     } catch (error: any) {
@@ -614,46 +625,45 @@ export function registerRoutes(app: Express): Server {
    */
   app.post("/api/doctors", async (req, res) => {
     try {
-      // First validate the request body
-      const validatedData = insertDoctorSchema.parse(req.body);
-
-      // Check if email already exists
-      const existingDoctor = await db.query.doctors.findFirst({
-        where: eq(doctors.email, validatedData.email),
+      const validatedData = insertDoctorSchema.parse({
+        ...req.body,
+        startDate: req.body.startDate ? new Date(req.body.startDate) : null,
       });
-
-      if (existingDoctor) {
-        return res.status(409).send("A doctor with this email already exists");
-      }
-
-      // Check if specialty exists (if specialtyId is provided)
-      if (validatedData.specialtyId) {
-        const specialty = await db.query.specialties.findFirst({
-          where: eq(specialties.id, validatedData.specialtyId),
+  
+      // Check if email already exists
+      if (validatedData.email) {
+        const existingDoctor = await db.query.doctors.findFirst({
+          where: eq(doctors.email, validatedData.email),
         });
-
-        if (!specialty) {
-          return res.status(400).send("Invalid specialty selected");
+  
+        if (existingDoctor) {
+          return res.status(409).json({ error: "A doctor with this email already exists" });
         }
       }
-
+  
       // Create the doctor
       const [newDoctor] = await db
         .insert(doctors)
         .values(validatedData)
         .returning();
-
-      // Return success response
-      res.status(201).json(newDoctor);
+  
+      // Return success response with the created doctor and its specialty
+      const doctorWithSpecialty = await db.query.doctors.findFirst({
+        where: eq(doctors.id, newDoctor.id),
+        with: {
+          specialty: true,
+        },
+      });
+  
+      res.status(201).json(doctorWithSpecialty);
     } catch (error: any) {
       console.error('Error creating doctor:', error);
-
+  
       if (error instanceof z.ZodError) {
-        // Handle validation errors
         const validationError = fromZodError(error);
-        return res.status(400).send(validationError.message);
+        return res.status(400).json({ error: validationError.message });
       }
-
+  
       res.status(500).json({
         error: 'Failed to create doctor',
         details: error.message
@@ -672,4 +682,5 @@ const insertDoctorSchema = z.object({
   qualification: z.string().optional(),
   experience: z.number().int().min(0).optional(),
   availableDays: z.array(z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])).optional(),
+  startDate: z.date().nullable().optional()
 });
