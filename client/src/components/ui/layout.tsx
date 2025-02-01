@@ -7,7 +7,6 @@ import {
   BarChart,
   Menu,
   UserCog,
-  FileText,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./sheet";
 import { ScrollArea } from "./scroll-area";
@@ -22,7 +21,6 @@ const menuItems = [
   { icon: Calendar, label: "navigation.appointments", href: "/appointments", dataTour: "appointments" },
   { icon: Users, label: "navigation.patients", href: "/patients", dataTour: "records" },
   { icon: UserCog, label: "navigation.doctors", href: "/doctors", dataTour: "team" },
-  { icon: FileText, label: "navigation.documents", href: "/document-translation" },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {

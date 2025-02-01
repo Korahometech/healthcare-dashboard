@@ -22,8 +22,7 @@ import {
   specialties,
   symptomJournals,
   symptomAnalysis,
-  medicalDocuments,
-  documentTranslations
+  medicalDocuments
 } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import { sendEmail, generateAppointmentEmail } from "./lib/email";
@@ -296,15 +295,7 @@ export function registerRoutes(app: Express): Server {
 
       await db.transaction(async (tx) => {
         // Delete document translations first
-        await tx.delete(documentTranslations)
-          .where(
-            eq(
-              documentTranslations.documentId,
-              db.select({ id: medicalDocuments.id })
-                .from(medicalDocuments)
-                .where(eq(medicalDocuments.patientId, patientId))
-            )
-          );
+       
 
         // Delete medical documents
         await tx.delete(medicalDocuments)
@@ -880,15 +871,12 @@ export function registerRoutes(app: Express): Server {
           return res.status(400).json({ error: "No file uploaded" });
         }
   
-        const { originalLanguage = "en" } = req.body;
-  
         const [document] = await db
           .insert(medicalDocuments)
           .values({
             fileName: req.file.originalname,
             fileType: req.file.mimetype,
             fileSize: req.file.size,
-            originalLanguage,
             secureUrl: req.file.path,
             status: "completed",
           })
@@ -920,29 +908,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
   
-  app.post("/api/medical-documents/translate", async (req, res) => {
-    try {
-      const { documentId, targetLanguage } = req.body;
   
-      const [translation] = await db
-        .insert(documentTranslations)
-        .values({
-          documentId,
-          targetLanguage,
-          status: "pending",
-        })
-        .returning();
-  
-      res.json(translation);
-    } catch (error: any) {
-      console.error("Error initiating document translation:", error);
-      res.status(500).json({
-        error: "Failed to initiate translation",
-        details: error.message,
-      });
-    }
-  });
-
 
   const httpServer = createServer(app);
     return httpServer;

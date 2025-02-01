@@ -125,26 +125,13 @@ export const medicalDocuments = pgTable("medical_documents", {
   fileName: text("file_name").notNull(),
   fileType: text("file_type").notNull(),
   fileSize: integer("file_size").notNull(),
-  originalLanguage: text("original_language").notNull(),
-  status: text("status").notNull().default("pending"), // pending, processing, completed, error
+  status: text("status").notNull().default("pending"),
   uploadedBy: integer("uploaded_by").references(() => doctors.id),
   secureUrl: text("secure_url").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at"),
 });
 
-export const documentTranslations = pgTable("document_translations", {
-  id: serial("id").primaryKey(),
-  documentId: integer("document_id").references(() => medicalDocuments.id),
-  targetLanguage: text("target_language").notNull(),
-  translatedUrl: text("translated_url"),
-  status: text("status").notNull().default("pending"), // pending, processing, completed, error
-  requestedBy: integer("requested_by").references(() => doctors.id),
-  completedAt: timestamp("completed_at"),
-  errorMessage: text("error_message"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at"),
-});
 
 // Add before export section, after the existing tables
 
@@ -194,7 +181,7 @@ export const labResultsRelations = relations(labResults, ({ one }) => ({
 
 
 // Add to the existing relations section
-export const medicalDocumentsRelations = relations(medicalDocuments, ({ one, many }) => ({
+export const medicalDocumentsRelations = relations(medicalDocuments, ({ one }) => ({
   patient: one(patients, {
     fields: [medicalDocuments.patientId],
     references: [patients.id],
@@ -203,19 +190,8 @@ export const medicalDocumentsRelations = relations(medicalDocuments, ({ one, man
     fields: [medicalDocuments.uploadedBy],
     references: [doctors.id],
   }),
-  translations: many(documentTranslations),
 }));
 
-export const documentTranslationsRelations = relations(documentTranslations, ({ one }) => ({
-  document: one(medicalDocuments, {
-    fields: [documentTranslations.documentId],
-    references: [medicalDocuments.id],
-  }),
-  requestedByDoctor: one(doctors, {
-    fields: [documentTranslations.requestedBy],
-    references: [doctors.id],
-  }),
-}));
 
 // Add to the existing relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -433,7 +409,7 @@ export const patientsRelations = relations(patients, ({ many }) => ({
   treatmentResponses: many(treatmentResponses),
   environmentalFactors: many(environmentalFactors),
   riskAssessments: many(riskAssessments),
-    medicalDocuments: many(medicalDocuments),
+  medicalDocuments: many(medicalDocuments),
 }));
 
 // Create schemas for new tables
@@ -513,10 +489,6 @@ export const selectMedicalDocumentSchema = createSelectSchema(medicalDocuments);
 export type InsertMedicalDocument = z.infer<typeof insertMedicalDocumentSchema>;
 export type SelectMedicalDocument = z.infer<typeof selectMedicalDocumentSchema>;
 
-export const insertDocumentTranslationSchema = createInsertSchema(documentTranslations);
-export const selectDocumentTranslationSchema = createSelectSchema(documentTranslations);
-export type InsertDocumentTranslation = z.infer<typeof insertDocumentTranslationSchema>;
-export type SelectDocumentTranslation = z.infer<typeof selectDocumentTranslationSchema>;
 
 // Add after the existing tables
 export const symptomJournals = pgTable("symptom_journals", {
