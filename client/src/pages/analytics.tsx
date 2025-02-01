@@ -191,7 +191,7 @@ export default function Analytics() {
   const appointmentTrends = getAppointmentsByTimeRange(appointments, appointmentTimeRange);
   const healthConditions = calculateHealthConditionsDistribution(patients);
   const bmiDistribution = calculateBMIDistribution(patients);
-  const appointmentOptimization = {
+    const appointmentOptimization = {
     peakHours: [
       { hour: '9 AM', count: 12 },
       { hour: '10 AM', count: 25 },
@@ -221,7 +221,7 @@ export default function Analytics() {
 
   return (
     <TooltipProvider>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
@@ -315,7 +315,7 @@ export default function Analytics() {
         </div>
 
         {healthTrends?.alerts && healthTrends.alerts.length > 0 && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
             <h3 className="text-lg font-semibold text-destructive mb-2">
               Critical Alerts
             </h3>
@@ -362,14 +362,22 @@ export default function Analytics() {
                 Trend analysis with statistical confidence
               </p>
             </div>
-            <div className="h-[400px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <XAxis dataKey="date" fontSize={12} tickMargin={8} />
+                  <YAxis fontSize={12} tickMargin={8} />
                   <RechartsTooltip content={<CustomTooltip />} />
-                  <Legend />
+                  <Legend 
+                    verticalAlign="top"
+                    height={36}
+                    iconSize={8}
+                    iconType="circle"
+                    formatter={(value: string) => (
+                      <span className="text-xs">{value}</span>
+                    )}
+                  />
                   {healthTrends?.detailedTrends?.map((trend, index) => (
                     <React.Fragment key={trend.category}>
                       <Line
@@ -380,6 +388,7 @@ export default function Analytics() {
                         stroke={`hsl(var(--chart-${(index % 4) + 1}))`}
                         dot={false}
                         strokeWidth={2}
+                        activeDot={{ r: 4, className: "animate-pulse" }}
                       />
                       <Area
                         type="monotone"
@@ -425,7 +434,7 @@ export default function Analytics() {
                 Statistical correlation analysis
               </p>
             </div>
-            <div className="h-[400px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
@@ -433,13 +442,17 @@ export default function Analytics() {
                     type="number"
                     dataKey="value1"
                     name="metric1"
-                    label={{ value: healthTrends?.metricCorrelations?.[0]?.metric1 ?? '', position: 'bottom' }}
+                    fontSize={12}
+                    tickMargin={8}
+                    label={{ value: healthTrends?.metricCorrelations?.[0]?.metric1 ?? '', position: 'bottom', fontSize: 12 }}
                   />
                   <YAxis
                     type="number"
                     dataKey="value2"
                     name="metric2"
-                    label={{ value: healthTrends?.metricCorrelations?.[0]?.metric2 ?? '', angle: -90, position: 'left' }}
+                    fontSize={12}
+                    tickMargin={8}
+                    label={{ value: healthTrends?.metricCorrelations?.[0]?.metric2 ?? '', angle: -90, position: 'left', fontSize: 12 }}
                   />
                   <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} />
                   <Scatter
@@ -472,12 +485,12 @@ export default function Analytics() {
                 </TooltipProvider>
               </div>
             </div>
-            <div className="h-[400px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={ageDistribution}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
-                  <XAxis dataKey="age" />
-                  <YAxis />
+                  <XAxis dataKey="age" fontSize={12} tickMargin={8} />
+                  <YAxis fontSize={12} tickMargin={8} />
                   <RechartsTooltip />
                   <Bar dataKey="count" fill={COLORS[0]}>
                     {ageDistribution.map((_, index) => (
@@ -511,7 +524,7 @@ export default function Analytics() {
                 </TooltipProvider>
               </div>
             </div>
-            <div className="h-[400px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -520,7 +533,7 @@ export default function Analytics() {
                     nameKey="gender"
                     cx="50%"
                     cy="50%"
-                    outerRadius={150}
+                    outerRadius={80}
                     label={({ gender, percent }) =>
                       `${gender} ${(percent * 100).toFixed(0)}%`
                     }
@@ -534,7 +547,15 @@ export default function Analytics() {
                     ))}
                   </Pie>
                   <RechartsTooltip />
-                  <Legend />
+                   <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    iconSize={8}
+                    iconType="circle"
+                    formatter={(value: string) => (
+                      <span className="text-xs">{value}</span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -577,7 +598,7 @@ export default function Analytics() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="h-[400px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={appointmentTrends}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
@@ -585,19 +606,31 @@ export default function Analytics() {
                     dataKey="name"
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
+                    tickMargin={8}
                   />
                   <YAxis
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
+                    tickMargin={8}
                   />
-                  <RechartsTooltip
+                   <RechartsTooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--background))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "var(--radius)",
+                      fontSize: "12px",
+                      padding: "8px",
                     }}
                   />
-                  <Legend />
+                   <Legend
+                    verticalAlign="top"
+                    height={36}
+                    iconSize={8}
+                    iconType="circle"
+                    formatter={(value: string) => (
+                      <span className="text-xs">{value}</span>
+                    )}
+                  />
                   <Line
                     type="monotone"
                     dataKey="count"
@@ -605,13 +638,13 @@ export default function Analytics() {
                     stroke={COLORS[0]}
                     strokeWidth={2}
                     dot={false}
+                    activeDot={{ r: 4, className: "animate-pulse" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </DashboardPanel>
-          {/* Add Appointment Optimization Section */}
-          <DashboardPanel>
+           <DashboardPanel>
             <div className="mb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Appointment Optimization</h2>
@@ -692,7 +725,6 @@ export default function Analytics() {
               </div>
             </div>
           </DashboardPanel>
-
           <DashboardPanel>
             <div className="mb-4">
               <div className="flex items-center gap-2">
