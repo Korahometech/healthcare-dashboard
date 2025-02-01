@@ -3,7 +3,13 @@ import { useSymptomJournal } from "@/hooks/use-symptom-journal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -19,6 +25,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 
 interface Props {
   patientId: number;
@@ -182,20 +190,101 @@ export function SymptomJournal({ patientId }: Props) {
               {journal.analysis?.[0] && (
                 <div className="mt-4 border-t pt-4">
                   <h4 className="font-semibold mb-2">AI Analysis</h4>
-                  <div className="space-y-2">
-                    <p>{journal.analysis[0].analysis}</p>
-                    <div>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      {journal.analysis[0].analysis}
+                    </p>
+
+                    <div className="flex items-center gap-2">
                       <strong>Sentiment:</strong>{" "}
-                      <span className="capitalize">
+                      <Badge
+                        variant={
+                          journal.analysis[0].sentiment === "positive"
+                            ? "success"
+                            : journal.analysis[0].sentiment === "negative"
+                            ? "destructive"
+                            : "secondary"
+                        }
+                      >
                         {journal.analysis[0].sentiment}
-                      </span>
+                      </Badge>
                     </div>
+
+                    {/* Display Trends and Patterns */}
+                    {journal.analysis[0].details && (
+                      <>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-sm">
+                                Identified Pattern
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-sm">
+                                {JSON.parse(journal.analysis[0].details).trends.pattern}
+                              </p>
+                            </CardContent>
+                          </Card>
+
+                          <Card>
+                            <CardHeader>
+                              <CardTitle className="text-sm">Potential Triggers</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <ul className="list-disc list-inside text-sm">
+                                {JSON.parse(journal.analysis[0].details).trends.triggers.map(
+                                  (trigger: string, index: number) => (
+                                    <li key={index}>{trigger}</li>
+                                  )
+                                )}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <Card className="border-green-200">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                              <CardTitle className="text-sm">Improvements</CardTitle>
+                              <TrendingUp className="h-4 w-4 text-green-500" />
+                            </CardHeader>
+                            <CardContent>
+                              <ul className="list-disc list-inside text-sm">
+                                {JSON.parse(journal.analysis[0].details).trends.improvements.map(
+                                  (improvement: string, index: number) => (
+                                    <li key={index}>{improvement}</li>
+                                  )
+                                )}
+                              </ul>
+                            </CardContent>
+                          </Card>
+
+                          <Card className="border-yellow-200">
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                              <CardTitle className="text-sm">Areas of Attention</CardTitle>
+                              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                            </CardHeader>
+                            <CardContent>
+                              <ul className="list-disc list-inside text-sm">
+                                {JSON.parse(journal.analysis[0].details).trends.concerns.map(
+                                  (concern: string, index: number) => (
+                                    <li key={index}>{concern}</li>
+                                  )
+                                )}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </>
+                    )}
+
                     <div>
-                      <strong>Suggested Actions:</strong>
-                      <ul className="list-disc list-inside ml-4">
+                      <strong>Recommended Actions:</strong>
+                      <ul className="list-disc list-inside ml-4 space-y-1">
                         {journal.analysis[0].suggestedActions?.map(
                           (action, index) => (
-                            <li key={index}>{action}</li>
+                            <li key={index} className="text-sm">{action}</li>
                           )
                         )}
                       </ul>

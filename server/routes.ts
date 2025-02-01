@@ -740,17 +740,98 @@ export function registerRoutes(app: Express): Server {
       // Only attempt AI analysis if OpenAI API key is available
       if (process.env.OPENAI_API_KEY) {
         try {
-          // Get patient's history for context
+          // Get comprehensive patient history for better personalization
+          const [patientDetails] = await db
+            .select()
+            .from(patients)
+            .where(eq(patients.id, patientId))
+            .limit(1);
+
+          // Get recent symptom history with analysis
           const patientHistory = await db.query.symptomJournals.findMany({
             where: eq(symptomJournals.patientId, patientId),
             orderBy: [desc(symptomJournals.dateRecorded)],
-            limit: 5,
+            limit: 10,
+            with: {
+              analysis: true,
+            },
           });
 
-          // Generate AI analysis
+          // Extract patterns and trends from history
+          const historicalPatterns = patientHistory.reduce((acc, entry) => {
+            entry.symptoms?.forEach(symptom => {
+              if (!acc[symptom]) {
+                acc[symptom] = {
+                  count: 0,
+                  avgSeverity: 0,
+                  commonMoods: new Set(),
+                  effectiveness: [] // Track which suggestions helped
+                };
+              }
+              acc[symptom].count++;
+              acc[symptom].avgSeverity += entry.severity;
+              acc[symptom].commonMoods.add(entry.mood);
+
+              // Track which suggestions were effective
+              entry.analysis?.forEach(analysis => {
+                if (analysis.suggestedActions) {
+                  acc[symptom].effectiveness.push({
+                    actions: analysis.suggestedActions,
+                    nextSeverity: patientHistory.find(h => 
+                      h.dateRecorded > entry.dateRecorded
+                    )?.severity || entry.severity
+                  });
+                }
+              });
+            });
+            return acc;
+          }, {} as Record<string, {
+            count: number;
+            avgSeverity: number;
+            commonMoods: Set<string>;
+            effectiveness: Array<{
+              actions: string[];
+              nextSeverity: number;
+            }>;
+          }>);
+
+          // Generate personalized prompt based on history
           const prompt = {
             role: "system",
-            content: "You are a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
+            content: `You are an advanced medical analysis assistant specializing in personalized healthcare insights.
+Analyze the patient's symptom patterns and provide highly personalized recommendations.
+
+Key Patient Information:
+- Health Conditions: ${patientDetails.healthConditions?.join(', ') || 'None recorded'}
+- Medications: ${patientDetails.medications?.join(', ') || 'None recorded'}
+- Allergies: ${patientDetails.allergies?.join(', ') || 'None recorded'}
+- Chronic Conditions: ${patientDetails.chronicConditions?.join(', ') || 'None recorded'}
+
+Historical Pattern Analysis:
+${Object.entries(historicalPatterns).map(([symptom, data]) => `
+${symptom}:
+- Frequency: ${data.count} occurrences
+- Average Severity: ${(data.avgSeverity / data.count).toFixed(1)}
+- Common Moods: ${Array.from(data.commonMoods).join(', ')}
+- Most Effective Actions: ${data.effectiveness
+  .filter(e => e.nextSeverity < e.actions.length)
+  .map(e => e.actions)
+  .flat()
+  .slice(0, 3)
+  .join(', ')}
+`).join('\n')}
+
+Provide analysis in JSON format with fields:
+- analysis (string): Detailed analysis incorporating historical patterns
+- sentiment (positive/negative/neutral): Overall health trajectory
+- suggestedActions (array of strings): Personalized recommendations based on what has worked before
+- confidence (number between 0 and 1): Confidence in the analysis
+- trends (object): {
+    pattern: string (identified pattern),
+    triggers: array of strings (potential triggers),
+    improvements: array of strings (areas showing improvement),
+    concerns: array of strings (areas needing attention)
+  }`
           };
 
           const userMessage = {
@@ -762,14 +843,7 @@ Severity: ${req.body.severity}
 Mood: ${req.body.mood}
 Notes: ${req.body.notes || "None"}
 
-Recent History:
-${patientHistory.map(h => `
-Date: ${h.dateRecorded}
-Symptoms: ${h.symptoms?.join(", ") || "None"}
-Severity: ${h.severity}
-Mood: ${h.mood}
-`).join("\n")}
-`
+Compare this with historical patterns and provide personalized insights.`
           };
 
           const response = await openai.chat.completions.create({
@@ -778,9 +852,9 @@ Mood: ${h.mood}
             response_format: { type: "json_object" },
           });
 
-          const analysis = JSON.parse(response.choices[0].message.content || "");
+          const analysis = JSON.parse(response.choices[0].message.content || "{}");
 
-          // Save AI analysis
+          // Save enhanced AI analysis
           const [savedAnalysis] = await db
             .insert(symptomAnalysis)
             .values({
@@ -789,6 +863,11 @@ Mood: ${h.mood}
               sentiment: analysis.sentiment,
               suggestedActions: analysis.suggestedActions,
               aiConfidence: analysis.confidence,
+              // Add additional analysis data as JSON in the analysis field
+              details: JSON.stringify({
+                trends: analysis.trends,
+                historicalPatterns
+              })
             })
             .returning();
 
@@ -798,7 +877,6 @@ Mood: ${h.mood}
           });
         } catch (aiError) {
           console.error("AI analysis failed:", aiError);
-          // Return just the journal if AI analysis fails
           return res.status(201).json({
             journal,
             analysis: null,
