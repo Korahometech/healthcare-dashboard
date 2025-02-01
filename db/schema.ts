@@ -146,6 +146,28 @@ export const documentTranslations = pgTable("document_translations", {
   updatedAt: timestamp("updated_at"),
 });
 
+// Add before export section, after the existing tables
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  email: text("email"),
+  role: text("role").notNull().default("user"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+export const insertUserSchema = createInsertSchema(users, {
+  username: z.string().min(3).max(50),
+  password: z.string().min(6),
+  email: z.string().email().optional(),
+  role: z.enum(["user", "admin"]).default("user"),
+});
+
+export const selectUserSchema = createSelectSchema(users);
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type SelectUser = z.infer<typeof selectUserSchema>;
 
 // Relations
 export const appointmentsRelations = relations(appointments, ({ one }) => ({
@@ -193,6 +215,12 @@ export const documentTranslationsRelations = relations(documentTranslations, ({ 
     fields: [documentTranslations.requestedBy],
     references: [doctors.id],
   }),
+}));
+
+// Add to the existing relations
+export const usersRelations = relations(users, ({ many }) => ({
+  appointments: many(appointments),
+  medicalDocuments: many(medicalDocuments),
 }));
 
 // Type exports
