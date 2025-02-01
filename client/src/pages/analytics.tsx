@@ -13,7 +13,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { AnalyticsPDFReport } from "@/components/analytics/pdf-report";
 import {
   LineChart,
   Line,
@@ -38,7 +46,6 @@ import {
   PolarRadiusAxis,
   Radar,
   ComposedChart,
-  TooltipProps,
   Tooltip as RechartsTooltip
 } from "recharts";
 import {
@@ -51,22 +58,6 @@ import {
   calculateBMIDistribution,
 } from "@/lib/analytics";
 import { format } from 'date-fns';
-import {
-  Tooltip as UITooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import { AnalyticsPDFReport } from "@/components/analytics/pdf-report";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
 const COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--chart-2))',
@@ -156,7 +147,6 @@ export default function Analytics() {
     healthTrends,
   };
 
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh]">
@@ -173,8 +163,8 @@ export default function Analytics() {
   const ageDistribution = calculateAgeDistribution(patients);
   const genderDistribution = calculateGenderDistribution(patients);
   const appointmentTrends = getAppointmentsByTimeRange(appointments, appointmentTimeRange);
-  const healthConditions = calculateHealthConditionsDistribution(patients);
-  const bmiDistribution = calculateBMIDistribution(patients);
+    const healthConditions = calculateHealthConditionsDistribution(patients);
+    const bmiDistribution = calculateBMIDistribution(patients);
     const appointmentOptimization = {
     peakHours: [
       { hour: '9 AM', count: 12 },
@@ -282,7 +272,7 @@ export default function Analytics() {
               {SPECIALTIES.find(s => s.value === specialty)?.label} Dashboard
             </h2>
             <TooltipProvider>
-              <UITooltip>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <HelpCircle className="h-4 w-4" />
@@ -291,7 +281,7 @@ export default function Analytics() {
                 <TooltipContent>
                   <p>Customized health metrics for {SPECIALTIES.find(s => s.value === specialty)?.label}</p>
                 </TooltipContent>
-              </UITooltip>
+              </Tooltip>
             </TooltipProvider>
           </div>
 
@@ -344,7 +334,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-semibold">Health Metrics Trends</h3>
                 <TooltipProvider>
-                  <UITooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -353,7 +343,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Visualizes key health metrics over time with confidence intervals</p>
                     </TooltipContent>
-                  </UITooltip>
+                  </Tooltip>
                 </TooltipProvider>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -416,7 +406,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-semibold">Metric Correlations</h3>
                 <TooltipProvider>
-                  <UITooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -425,7 +415,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Shows relationships between different health indicators</p>
                     </TooltipContent>
-                  </UITooltip>
+                  </Tooltip>
                 </TooltipProvider>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -470,7 +460,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Patient Demographics</h2>
                 <TooltipProvider>
-                  <UITooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -479,7 +469,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Age distribution of registered patients</p>
                     </TooltipContent>
-                  </UITooltip>
+                  </Tooltip>
                 </TooltipProvider>
               </div>
             </div>
@@ -509,7 +499,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Gender Distribution</h2>
                 <TooltipProvider>
-                  <UITooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -518,7 +508,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Gender distribution across patient population</p>
                     </TooltipContent>
-                  </UITooltip>
+                  </Tooltip>
                 </TooltipProvider>
               </div>
             </div>
@@ -566,7 +556,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Appointment Analytics</h2>
                 <TooltipProvider>
-                  <UITooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -575,7 +565,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Appointment frequency and distribution over time</p>
                     </TooltipContent>
-                  </UITooltip>
+                  </Tooltip>
                 </TooltipProvider>
               </div>
               <Select
@@ -647,7 +637,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Appointment Optimization</h2>
                 <TooltipProvider>
-                  <UITooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -656,7 +646,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Insights for optimizing appointment scheduling and reducing wait times</p>
                     </TooltipContent>
-                  </UITooltip>
+                  </Tooltip>
                 </TooltipProvider>
               </div>
             </div>
@@ -728,7 +718,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Lab Results Trends</h2>
                 <TooltipProvider>
-                  <UITooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -737,7 +727,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Trends in laboratory test results over time</p>
                     </TooltipContent>
-                  </UITooltip>
+                  </Tooltip>
                 </TooltipProvider>
               </div>
             </div>
