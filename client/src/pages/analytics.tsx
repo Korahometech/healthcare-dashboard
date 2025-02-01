@@ -59,6 +59,7 @@ import {
   calculateBMIDistribution,
 } from "@/lib/analytics";
 import { format } from 'date-fns';
+import { ChartTooltip } from "@/components/ui/chart-tooltip";
 const COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--chart-2))',
@@ -193,6 +194,9 @@ export default function Analytics() {
     ],
     schedulingEfficiency: 85.5,
   }
+    const formatPercent = (value: number) => `${value.toFixed(1)}%`;
+    const formatCount = (value: number) => value.toLocaleString();
+    const formatDate = (date: string) => format(new Date(date), 'MMM d, yyyy');
 
   return (
     <TooltipProvider>
@@ -357,7 +361,17 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
                   <XAxis dataKey="date" fontSize={12} tickMargin={8} />
                   <YAxis fontSize={12} tickMargin={8} />
-                  <RechartsTooltip content={<CustomTooltip />} />
+                    <RechartsTooltip
+                        content={({ active, payload, label }) => (
+                            <ChartTooltip
+                                active={active}
+                                payload={payload}
+                                label={label}
+                                formatter={(value) => value.toFixed(2)}
+                                labelFormatter={formatDate}
+                            />
+                        )}
+                    />
                   <Legend
                     verticalAlign="top"
                     height={36}
@@ -480,13 +494,22 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
                   <XAxis dataKey="age" fontSize={12} tickMargin={8} />
                   <YAxis fontSize={12} tickMargin={8} />
-                  <RechartsTooltip />
+                    <RechartsTooltip
+                        content={({ active, payload, label }) => (
+                            <ChartTooltip
+                                active={active}
+                                payload={payload}
+                                label={`Age: ${label}`}
+                                formatter={formatCount}
+                            />
+                        )}
+                    />
                   <Bar dataKey="count" fill={COLORS[0]}>
                     {ageDistribution.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}
-                        className="opacity-80 hover:opacity-100 transition-opacity"
+                        className="opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
                       />
                     ))}
                   </Bar>
@@ -523,20 +546,29 @@ export default function Analytics() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
+                      className="transition-all duration-300"
                     label={({ gender, percent }) =>
                       `${gender} ${(percent * 100).toFixed(0)}%`
                     }
                   >
-                    {genderDistribution.map((_, index) => (
+                    {genderDistribution.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}
-                        className="opacity-80 hover:opacity-100 transition-opacity"
+                          className="opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
                       />
                     ))}
                   </Pie>
-                  <RechartsTooltip />
-                   <Legend
+                  <RechartsTooltip
+                      content={({ active, payload }) => (
+                          <ChartTooltip
+                              active={active}
+                              payload={payload}
+                              formatter={(value) => `${value} patients (${formatPercent((value / patients.length) * 100)})`}
+                          />
+                      )}
+                  />
+                  <Legend
                     verticalAlign="bottom"
                     height={36}
                     iconSize={8}
@@ -602,7 +634,7 @@ export default function Analytics() {
                     fontSize={12}
                     tickMargin={8}
                   />
-                   <RechartsTooltip
+                  <RechartsTooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--background))",
                       border: "1px solid hsl(var(--border))",
@@ -610,6 +642,15 @@ export default function Analytics() {
                       fontSize: "12px",
                       padding: "8px",
                     }}
+                      content={({ active, payload, label }) => (
+                          <ChartTooltip
+                              active={active}
+                              payload={payload}
+                              label={label}
+                              formatter={formatCount}
+                              labelFormatter={formatDate}
+                          />
+                      )}
                   />
                    <Legend
                     verticalAlign="top"
@@ -765,27 +806,3 @@ export default function Analytics() {
     </TooltipProvider>
   );
 }
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload || !payload.length) {
-    return null;
-  }
-
-  return (
-    <div className="bg-background border rounded-lg shadow-lg p-3">
-      <p className="font-semibold">{format(new Date(label), 'MMM d, yyyy')}</p>
-      {payload.map((entry: any, index: number) => (
-        <div key={index} className="mt-2">
-          <p style={{ color: entry.color }}>
-            {entry.name}: {entry.value.toFixed(2)}
-            {entry.payload.confidenceInterval && (
-              <span className="text-sm text-muted-foreground">
-                {' '}(±{((entry.payload.confidenceInterval.upper - entry.payload.confidenceInterval.lower) / 2).toFixed(2)})
-              </span>
-            )}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-};
