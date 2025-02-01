@@ -737,22 +737,25 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Get patient's history for context
-      const patientHistory = await db.query.symptomJournals.findMany({
-        where: eq(symptomJournals.patientId, patientId),
-        orderBy: [desc(symptomJournals.dateRecorded)],
-        limit: 5,
-      });
+      // Only attempt AI analysis if OpenAI API key is available
+      if (process.env.OPENAI_API_KEY) {
+        try {
+          // Get patient's history for context
+          const patientHistory = await db.query.symptomJournals.findMany({
+            where: eq(symptomJournals.patientId, patientId),
+            orderBy: [desc(symptomJournals.dateRecorded)],
+            limit: 5,
+          });
 
-      // Generate AI analysis
-      const prompt = {
-        role: "system",
-        content: "You are a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
-      };
+          // Generate AI analysis
+          const prompt = {
+            role: "system",
+            content: "You are a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
+          };
 
-      const userMessage = {
-        role: "user",
-        content: `
+          const userMessage = {
+            role: "user",
+            content: `
 Current Entry:
 Symptoms: ${req.body.symptoms.join(", ")}
 Severity: ${req.body.severity}
@@ -762,36 +765,51 @@ Notes: ${req.body.notes || "None"}
 Recent History:
 ${patientHistory.map(h => `
 Date: ${h.dateRecorded}
-Symptoms: ${h.symptoms.join(", ")}
+Symptoms: ${h.symptoms?.join(", ") || "None"}
 Severity: ${h.severity}
 Mood: ${h.mood}
 `).join("\n")}
 `
-      };
+          };
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [prompt, userMessage],
-        response_format: { type: "json_object" },
-      });
+          const response = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [prompt, userMessage],
+            response_format: { type: "json_object" },
+          });
 
-      const analysis = JSON.parse(response.choices[0].message.content);
+          const analysis = JSON.parse(response.choices[0].message.content || "");
 
-      // Save AI analysis
-      const [savedAnalysis] = await db
-        .insert(symptomAnalysis)
-        .values({
-          journalId: journal.id,
-          analysis: analysis.analysis,
-          sentiment: analysis.sentiment,
-          suggestedActions: analysis.suggestedActions,
-          aiConfidence: analysis.confidence,
-        })
-        .returning();
+          // Save AI analysis
+          const [savedAnalysis] = await db
+            .insert(symptomAnalysis)
+            .values({
+              journalId: journal.id,
+              analysis: analysis.analysis,
+              sentiment: analysis.sentiment,
+              suggestedActions: analysis.suggestedActions,
+              aiConfidence: analysis.confidence,
+            })
+            .returning();
 
+          return res.status(201).json({
+            journal,
+            analysis: savedAnalysis,
+          });
+        } catch (aiError) {
+          console.error("AI analysis failed:", aiError);
+          // Return just the journal if AI analysis fails
+          return res.status(201).json({
+            journal,
+            analysis: null,
+          });
+        }
+      }
+
+      // Return journal without analysis if no OpenAI API key
       res.status(201).json({
         journal,
-        analysis: savedAnalysis,
+        analysis: null,
       });
     } catch (error: any) {
       console.error("Error creating symptom journal:", error);
