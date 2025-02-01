@@ -59,6 +59,28 @@ export const appointments = pgTable("appointments", {
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const symptomJournals = pgTable("symptom_journals", {
+  id: integer("id").primaryKey().notNull(),
+  patientId: integer("patient_id").notNull().references(() => patients.id),
+  symptoms: text("symptoms").array(),
+  severity: integer("severity").notNull(),
+  duration: text("duration"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const symptomAnalysis = pgTable("symptom_analysis", {
+  id: integer("id").primaryKey().notNull(),
+  journalId: integer("journal_id").notNull().references(() => symptomJournals.id),
+  analysis: text("analysis").notNull(),
+  recommendations: text("recommendations"),
+  severity: text("severity"),
+  trends: text("trends"),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+
 export const doctorsRelations = relations(doctors, ({ one }) => ({
   specialty: one(specialties, {
     fields: [doctors.specialtyId],
@@ -76,6 +98,32 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
     references: [patients.id],
   }),
 }));
+
+export const symptomJournalsRelations = relations(symptomJournals, ({ one, many }) => ({
+  patient: one(patients, {
+    fields: [symptomJournals.patientId],
+    references: [patients.id],
+  }),
+  analysis: many(symptomAnalysis),
+}));
+
+export const symptomAnalysisRelations = relations(symptomAnalysis, ({ one }) => ({
+  journal: one(symptomJournals, {
+    fields: [symptomAnalysis.journalId],
+    references: [symptomJournals.id],
+  }),
+}));
+
+
+export const insertSymptomJournalSchema = createInsertSchema(symptomJournals, {
+  symptoms: z.array(z.string()).min(1, "At least one symptom is required"),
+  severity: z.number().min(1).max(10),
+  duration: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const insertSymptomAnalysisSchema = createInsertSchema(symptomAnalysis);
+
 
 export const insertDoctorSchema = createInsertSchema(doctors, {
   name: z.string().min(3, 'Name must be at least 3 characters long'),
@@ -118,3 +166,7 @@ export type InsertPatient = z.infer<typeof insertPatientSchema>;
 export type SelectPatient = typeof patients.$inferSelect;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
 export type SelectAppointment = typeof appointments.$inferSelect;
+export type InsertSymptomJournal = z.infer<typeof insertSymptomJournalSchema>;
+export type SelectSymptomJournal = typeof symptomJournals.$inferSelect;
+export type InsertSymptomAnalysis = z.infer<typeof insertSymptomAnalysisSchema>;
+export type SelectSymptomAnalysis = typeof symptomAnalysis.$inferSelect;
