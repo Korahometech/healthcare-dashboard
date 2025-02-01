@@ -141,6 +141,21 @@ export default function Appointments() {
       });
     }
   };
+    const handleDeleteAppointment = async (appointmentId: number) => {
+    try {
+      await deleteAppointment(appointmentId);
+      toast({
+        title: "Success",
+        description: "Appointment deleted successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete appointment",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -426,21 +441,7 @@ export default function Appointments() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={async () => {
-                            try {
-                              await deleteAppointment(appointment.id);
-                              toast({
-                                title: "Appointment deleted",
-                                description: "The appointment has been successfully deleted.",
-                              });
-                            } catch (error: any) {
-                              toast({
-                                title: "Error",
-                                description: error.message,
-                                variant: "destructive",
-                              });
-                            }
-                          }}
+                          onClick={() => handleDeleteAppointment(appointment.id)}
                         >
                           Delete
                         </AlertDialogAction>
