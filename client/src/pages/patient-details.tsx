@@ -24,7 +24,7 @@ export default function PatientDetails() {
   return (
     <div className="container py-6">
       <h1 className="text-3xl font-bold mb-6">{patient.name}</h1>
-      
+
       <Tabs defaultValue="symptom-journal" className="space-y-4">
         <TabsList>
           <TabsTrigger value="symptom-journal">Symptom Journal</TabsTrigger>
@@ -43,12 +43,13 @@ export default function PatientDetails() {
               <p>Email: {patient.email || "Not provided"}</p>
               <p>Phone: {patient.phone || "Not provided"}</p>
             </div>
-            {/* Add more patient details sections as needed */}
           </div>
         </TabsContent>
 
         <TabsContent value="appointments">
-          {/* Add appointments component here */}
+          <div className="text-center text-muted-foreground">
+            Coming soon...
+          </div>
         </TabsContent>
       </Tabs>
     </div>
