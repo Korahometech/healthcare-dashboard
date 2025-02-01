@@ -3,6 +3,7 @@ import { usePatients } from "@/hooks/use-patients";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
+import { Link, useLocation } from "wouter";
 import { Calendar as CalendarIcon, Plus, Trash2, Loader2, FileText } from "lucide-react";
 import {
   Table,
@@ -152,7 +153,7 @@ export default function Patients() {
   });
   const { patients, createPatient, deletePatient, isLoading } = usePatients();
   const { toast } = useToast();
-
+  const [, navigate] = useLocation();
 
   const filteredPatients = patients.filter((patient) => {
     const matchesSearch = patient.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -498,8 +499,8 @@ export default function Patients() {
                 {filteredPatients.map((patient) => (
                   <TableRow
                     key={patient.id}
-                    className="cursor-pointer"
-                    onClick={() => setSelectedPatient(patient.id)}
+                    className="cursor-pointer hover:bg-secondary/20"
+                    onClick={() => navigate(`/patients/${patient.id}`)}
                   >
                     <TableCell className="font-medium">{patient.name}</TableCell>
                     <TableCell>{patient.email}</TableCell>
@@ -510,124 +511,55 @@ export default function Patients() {
                         format(new Date(patient.createdAt), "PP")}
                     </TableCell>
                     <TableCell>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/patients/${patient.id}`}>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-destructive hover:text-destructive"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <FileText className="h-4 w-4" />
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Remove {patient.name}?
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently
-                              delete the patient and all associated records.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(patient.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        </Link>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Remove {patient.name}?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently
+                                delete the patient and all associated records.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(patient.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Remove
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
-
-          {selectedPatient && (
-            <div className="rounded-lg border p-6">
-              <Tabs defaultValue="timeline" className="space-y-4">
-                <TabsList>
-                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
-                  <TabsTrigger value="records">Medical Records</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="timeline">
-                  <PatientTimeline 
-                    patientId={selectedPatient} 
-                    onClose={() => setSelectedPatient(null)} 
-                  />
-                </TabsContent>
-
-                <TabsContent value="records">
-                  <div className="space-y-8">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-2xl font-bold">Medical Records</h2>
-                      <Button
-                        variant="ghost"
-                        onClick={() => setSelectedPatient(null)}
-                      >
-                        Close
-                      </Button>
-                    </div>
-                    <div className="grid gap-6">
-                      {/* Medical History Card */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Medical History</CardTitle>
-                          <CardDescription>Patient's medical history and conditions</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <dl className="grid gap-2">
-                            <div className="grid grid-cols-3">
-                              <dt className="font-medium">Health Conditions:</dt>
-                              <dd className="col-span-2">{patients.find(p => p.id === selectedPatient)?.healthConditions?.join(", ") || "None"}</dd>
-                            </div>
-                            <div className="grid grid-cols-3">
-                              <dt className="font-medium">Medications:</dt>
-                              <dd className="col-span-2">{patients.find(p => p.id === selectedPatient)?.medications?.join(", ") || "None"}</dd>
-                            </div>
-                            <div className="grid grid-cols-3">
-                              <dt className="font-medium">Allergies:</dt>
-                              <dd className="col-span-2">{patients.find(p => p.id === selectedPatient)?.allergies?.join(", ") || "None"}</dd>
-                            </div>
-                               <div className="grid grid-cols-3">
-                              <dt className="font-medium">Medical Notes:</dt>
-                              <dd className="col-span-2">{patients.find(p => p.id === selectedPatient)?.medicalNotes || "None"}</dd>
-                            </div>
-                          </dl>
-                        </CardContent>
-                      </Card>
-
-                      {/* Lifestyle Information Card */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Lifestyle Information</CardTitle>
-                          <CardDescription>Patient's lifestyle and habits</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <dl className="grid gap-2">
-                            <div className="grid grid-cols-3">
-                              <dt className="font-medium">Smoking Status:</dt>
-                              <dd className="col-span-2 capitalize">{patients.find(p => p.id === selectedPatient)?.smokingStatus || "Not specified"}</dd>
-                            </div>
-                            <div className="grid grid-cols-3">
-                              <dt className="font-medium">Exercise Frequency:</dt>
-                              <dd className="col-span-2 capitalize">{patients.find(p => p.id === selectedPatient)?.exerciseFrequency || "Not specified"}</dd>
-                            </div>
-                          </dl>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          )}
         </div>
       )}
     </div>
