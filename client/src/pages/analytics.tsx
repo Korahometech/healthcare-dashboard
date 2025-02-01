@@ -257,7 +257,7 @@ export default function Analytics() {
               {SPECIALTIES.find(s => s.value === specialty)?.label} Dashboard
             </h2>
             <TooltipProvider>
-              <Tooltip>
+              <UITooltip>
                 <TooltipTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <HelpCircle className="h-4 w-4" />
@@ -266,7 +266,7 @@ export default function Analytics() {
                 <TooltipContent>
                   <p>Customized health metrics for {SPECIALTIES.find(s => s.value === specialty)?.label}</p>
                 </TooltipContent>
-              </Tooltip>
+              </UITooltip>
             </TooltipProvider>
           </div>
 
@@ -319,7 +319,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-semibold">Health Metrics Trends</h3>
                 <TooltipProvider>
-                  <Tooltip>
+                  <UITooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -328,7 +328,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Visualizes key health metrics over time with confidence intervals</p>
                     </TooltipContent>
-                  </Tooltip>
+                  </UITooltip>
                 </TooltipProvider>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -341,7 +341,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
                   <XAxis dataKey="date" />
                   <YAxis />
-                   <RechartsTooltip content={<CustomTooltip />} />
+                  <RechartsTooltip content={<CustomTooltip />} />
                   <Legend />
                   {healthTrends?.detailedTrends?.map((trend, index) => (
                     <React.Fragment key={trend.category}>
@@ -382,7 +382,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-semibold">Metric Correlations</h3>
                 <TooltipProvider>
-                  <Tooltip>
+                  <UITooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -391,7 +391,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Shows relationships between different health indicators</p>
                     </TooltipContent>
-                  </Tooltip>
+                  </UITooltip>
                 </TooltipProvider>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -432,7 +432,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Patient Demographics</h2>
                 <TooltipProvider>
-                  <Tooltip>
+                  <UITooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -441,7 +441,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Age distribution of registered patients</p>
                     </TooltipContent>
-                  </Tooltip>
+                  </UITooltip>
                 </TooltipProvider>
               </div>
             </div>
@@ -471,7 +471,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Gender Distribution</h2>
                 <TooltipProvider>
-                  <Tooltip>
+                  <UITooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -480,7 +480,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Gender distribution across patient population</p>
                     </TooltipContent>
-                  </Tooltip>
+                  </UITooltip>
                 </TooltipProvider>
               </div>
             </div>
@@ -506,7 +506,7 @@ export default function Analytics() {
                       />
                     ))}
                   </Pie>
-                   <RechartsTooltip />
+                  <RechartsTooltip />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -520,7 +520,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Appointment Analytics</h2>
                 <TooltipProvider>
-                  <Tooltip>
+                  <UITooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -529,7 +529,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Appointment frequency and distribution over time</p>
                     </TooltipContent>
-                  </Tooltip>
+                  </UITooltip>
                 </TooltipProvider>
               </div>
               <Select
@@ -563,7 +563,7 @@ export default function Analytics() {
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                   />
-                   <RechartsTooltip
+                  <RechartsTooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--background))",
                       border: "1px solid hsl(var(--border))",
@@ -589,7 +589,7 @@ export default function Analytics() {
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-semibold">Lab Results Trends</h2>
                 <TooltipProvider>
-                  <Tooltip>
+                  <UITooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <HelpCircle className="h-4 w-4" />
@@ -598,7 +598,7 @@ export default function Analytics() {
                     <TooltipContent>
                       <p>Trends in laboratory test results over time</p>
                     </TooltipContent>
-                  </Tooltip>
+                  </UITooltip>
                 </TooltipProvider>
               </div>
             </div>
@@ -612,7 +612,7 @@ export default function Analytics() {
                     allowDuplicatedCategory={false}
                   />
                   <YAxis />
-                   <RechartsTooltip />
+                  <RechartsTooltip />
                   <Legend />
                   {healthTrends?.labTrends?.map((test, index) => (
                     <Line
