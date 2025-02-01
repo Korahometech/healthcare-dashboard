@@ -31,7 +31,12 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectAppointment } from "@db/schema";
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
+const COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))'
+];
 
 type AppointmentWithPatient = SelectAppointment & {
   patient?: {
@@ -167,54 +172,54 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard Overview</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-4xl font-bold tracking-tight">Dashboard Overview</h1>
+          <p className="text-muted-foreground mt-2">
             Monitor your clinical practice performance
           </p>
         </div>
-        <Button onClick={exportData} variant="outline" className="gap-2">
+        <Button onClick={exportData} variant="outline" size="lg" className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors">
           <Download className="h-4 w-4" />
           Export Report
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Patients"
           value={patients.length}
-          icon={<Users className="h-4 w-4" />}
+          icon={<Users className="h-5 w-5" />}
           description="Registered patients"
         />
         <StatsCard
           title="Total Appointments"
           value={appointments.length}
-          icon={<Calendar className="h-4 w-4" />}
+          icon={<Calendar className="h-5 w-5" />}
           description="Appointments to date"
           trending={appointmentsTrending}
         />
         <StatsCard
           title="Confirmed Appointments"
           value={confirmedAppointments}
-          icon={<CheckCircle className="h-4 w-4" />}
+          icon={<CheckCircle className="h-5 w-5" />}
           description="Successfully completed"
         />
         <StatsCard
           title="Cancelled Appointments"
           value={canceledAppointments}
-          icon={<XCircle className="h-4 w-4" />}
+          icon={<XCircle className="h-5 w-5" />}
           description="Cancelled or missed"
         />
       </div>
 
       <DashboardLayout defaultSizes={[40, 60]}>
         <DashboardPanel>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Appointment Status</h2>
-            <div className="text-sm text-muted-foreground">
-              Current Period
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold">Appointment Status</h2>
+              <p className="text-sm text-muted-foreground mt-1">Current distribution</p>
             </div>
           </div>
           <div className="h-[500px] flex items-center">
@@ -226,10 +231,11 @@ export default function Dashboard() {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={100}
+                  outerRadius={120}
                   label={({ name, percent }) =>
                     `${name} ${(percent * 100).toFixed(0)}%`
                   }
+                  className="transition-all duration-300"
                 >
                   {appointmentsByStatus.map((entry, index) => (
                     <Cell
@@ -239,7 +245,13 @@ export default function Dashboard() {
                     />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--background))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "var(--radius)",
+                  }}
+                />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -247,8 +259,11 @@ export default function Dashboard() {
         </DashboardPanel>
 
         <DashboardPanel>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Growth Trends</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold">Growth Trends</h2>
+              <p className="text-sm text-muted-foreground mt-1">Patient and appointment growth</p>
+            </div>
             <Select
               value={timeRange}
               onValueChange={setTimeRange}
@@ -265,7 +280,7 @@ export default function Dashboard() {
           </div>
           <div className="h-[500px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyStats}>
+              <LineChart data={monthlyStats} className="transition-all duration-300">
                 <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
                 <XAxis
                   dataKey="name"
@@ -296,18 +311,20 @@ export default function Dashboard() {
                   type="monotone"
                   dataKey="appointments"
                   stroke={COLORS[0]}
-                  strokeWidth={2}
+                  strokeWidth={3}
                   name="Appointments"
                   dot={false}
+                  activeDot={{ r: 6, className: "animate-pulse" }}
                 />
                 <Line
                   yAxisId="right"
                   type="monotone"
                   dataKey="patients"
                   stroke={COLORS[1]}
-                  strokeWidth={2}
+                  strokeWidth={3}
                   name="New Patients"
                   dot={false}
+                  activeDot={{ r: 6, className: "animate-pulse" }}
                 />
               </LineChart>
             </ResponsiveContainer>
