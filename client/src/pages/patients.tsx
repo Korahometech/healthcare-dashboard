@@ -195,7 +195,7 @@ export default function Patients() {
     try {
       await createPatient({
         ...values,
-        dateOfBirth: values.dateOfBirth ? values.dateOfBirth.toISOString() : null,
+        dateOfBirth: values.dateOfBirth instanceof Date ? values.dateOfBirth.toISOString() : values.dateOfBirth,
         emergencyContact: values.emergencyContact ? JSON.stringify(values.emergencyContact) : null,
       });
       setOpen(false);
