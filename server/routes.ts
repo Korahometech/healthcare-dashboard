@@ -821,6 +821,14 @@ ${symptom}:
   .join(', ')}
 `).join('\n')}
 
+Recent History:
+${patientHistory.map(h => `
+Date: ${h.dateRecorded}
+Symptoms: ${h.symptoms?.join(", ") || "None"}
+Severity: ${h.severity}
+Mood: ${h.mood}
+`).join("\n")}
+
 Provide analysis in JSON format with fields:
 - analysis (string): Detailed analysis incorporating historical patterns
 - sentiment (positive/negative/neutral): Overall health trajectory
@@ -845,12 +853,13 @@ Notes: ${req.body.notes || "None"}
 
 Compare this with historical patterns and provide personalized insights.`
           };
-          // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+
           const response = await openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-4",
             messages: [prompt, userMessage],
             response_format: { type: "json_object" },
           });
+
 
           const analysis = JSON.parse(response.choices[0].message.content || "{}");
 
