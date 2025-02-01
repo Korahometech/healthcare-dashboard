@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAppointments } from "@/hooks/use-appointments";
 import { usePatients } from "@/hooks/use-patients";
-import { useHealthTrends, type TimeRange } from "@/hooks/use-health-trends";
+import { useHealthTrends, type TimeRange, Specialty, MetricGroup } from "@/hooks/use-health-trends";
 import { Loader2, Calendar, Users, TrendingUp, MapPin, Download, HelpCircle } from "lucide-react";
 import { StatsCard } from "@/components/ui/stats-card";
 import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
@@ -56,12 +56,45 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 const COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--chart-2))',
   'hsl(var(--chart-3))',
   'hsl(var(--chart-4))'
+];
+
+const SPECIALTIES: { label: string; value: Specialty }[] = [
+  { label: "General Practice", value: "general" },
+  { label: "Cardiology", value: "cardiology" },
+  { label: "Endocrinology", value: "endocrinology" },
+  { label: "Neurology", value: "neurology" },
+  { label: "Pediatrics", value: "pediatrics" },
+  { label: "Oncology", value: "oncology" },
+];
+
+const DEFAULT_METRIC_GROUPS: MetricGroup[] = [
+  {
+    id: "vitals",
+    name: "Vital Signs",
+    metrics: ["heart_rate", "blood_pressure", "temperature", "respiratory_rate"],
+    priority: "high",
+    thresholds: {
+      warning: 140,
+      critical: 180,
+    },
+  },
+  {
+    id: "lab_results",
+    name: "Laboratory Results",
+    metrics: ["glucose", "cholesterol", "hemoglobin"],
+    priority: "medium",
+    thresholds: {
+      warning: 126,
+      critical: 200,
+    },
+  },
 ];
 
 const TIME_RANGES: { label: string; value: TimeRange }[] = [
@@ -82,10 +115,17 @@ type AppointmentTimeRange = "daily" | "weekly" | "monthly";
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState<TimeRange>("6M");
+  const [specialty, setSpecialty] = useState<Specialty>("general");
+  const [metricGroups, setMetricGroups] = useState<MetricGroup[]>(DEFAULT_METRIC_GROUPS);
   const [appointmentTimeRange, setAppointmentTimeRange] = useState<AppointmentTimeRange>("weekly");
   const { appointments = [], isLoading: appointmentsLoading } = useAppointments();
   const { patients = [], isLoading: patientsLoading } = usePatients();
-  const { data: healthTrends, isLoading: healthTrendsLoading } = useHealthTrends(undefined, timeRange);
+  const { data: healthTrends, isLoading: healthTrendsLoading } = useHealthTrends(
+    undefined,
+    timeRange,
+    specialty,
+    metricGroups
+  );
   const { toast } = useToast();
 
   const isLoading = appointmentsLoading || patientsLoading || healthTrendsLoading;
@@ -194,7 +234,22 @@ export default function Analytics() {
           />
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
+        <Select
+            value={specialty}
+            onValueChange={(value: Specialty) => setSpecialty(value)}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select specialty" />
+            </SelectTrigger>
+            <SelectContent>
+              {SPECIALTIES.map(({ label, value }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-bold">Health Analytics</h2>
             <TooltipProvider>
@@ -226,6 +281,32 @@ export default function Analytics() {
             </SelectContent>
           </Select>
         </div>
+
+        {healthTrends?.alerts && healthTrends.alerts.length > 0 && (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+            <h3 className="text-lg font-semibold text-destructive mb-2">
+              Critical Alerts
+            </h3>
+            <div className="space-y-2">
+              {healthTrends.alerts.map((alert: any, index: number) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2 rounded bg-background"
+                >
+                  <div>
+                    <span className="font-medium">{alert.group}: </span>
+                    <span>{alert.metric}</span>
+                  </div>
+                  <Badge
+                    variant={alert.severity === "critical" ? "destructive" : "warning"}
+                  >
+                    {alert.value.toFixed(2)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <DashboardLayout defaultSizes={[60, 40]}>
           <DashboardPanel>
