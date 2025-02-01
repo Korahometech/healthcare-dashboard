@@ -25,7 +25,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
   Legend,
   ResponsiveContainer,
   AreaChart,
@@ -39,6 +38,8 @@ import {
   PolarRadiusAxis,
   Radar,
   ComposedChart,
+  TooltipProps,
+  Tooltip as RechartsTooltip
 } from "recharts";
 import {
   calculateCompletionRate,
@@ -235,7 +236,7 @@ export default function Analytics() {
         </div>
 
         <div className="flex items-center justify-between gap-4">
-        <Select
+          <Select
             value={specialty}
             onValueChange={(value: Specialty) => setSpecialty(value)}
           >
@@ -250,8 +251,11 @@ export default function Analytics() {
               ))}
             </SelectContent>
           </Select>
+
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold">Health Analytics</h2>
+            <h2 className="text-2xl font-bold">
+              {SPECIALTIES.find(s => s.value === specialty)?.label} Dashboard
+            </h2>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -260,11 +264,12 @@ export default function Analytics() {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Detailed analysis of patient health metrics and trends over time</p>
+                  <p>Customized health metrics for {SPECIALTIES.find(s => s.value === specialty)?.label}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
+
           <Select
             value={timeRange}
             onValueChange={(value: TimeRange) => setTimeRange(value)}
@@ -298,7 +303,7 @@ export default function Analytics() {
                     <span>{alert.metric}</span>
                   </div>
                   <Badge
-                    variant={alert.severity === "critical" ? "destructive" : "warning"}
+                    variant={alert.severity === "critical" ? "destructive" : "secondary"}
                   >
                     {alert.value.toFixed(2)}
                   </Badge>
@@ -336,7 +341,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
                   <XAxis dataKey="date" />
                   <YAxis />
-                  <Tooltip content={<CustomTooltip />} />
+                   <RechartsTooltip content={<CustomTooltip />} />
                   <Legend />
                   {healthTrends?.detailedTrends?.map((trend, index) => (
                     <React.Fragment key={trend.category}>
@@ -409,7 +414,7 @@ export default function Analytics() {
                     name="metric2"
                     label={{ value: healthTrends?.metricCorrelations?.[0]?.metric2 ?? '', angle: -90, position: 'left' }}
                   />
-                  <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+                  <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} />
                   <Scatter
                     name="Health Metrics"
                     data={healthTrends?.metricCorrelations ?? []}
@@ -446,7 +451,7 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
                   <XAxis dataKey="age" />
                   <YAxis />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Bar dataKey="count" fill={COLORS[0]}>
                     {ageDistribution.map((_, index) => (
                       <Cell
@@ -501,7 +506,7 @@ export default function Analytics() {
                       />
                     ))}
                   </Pie>
-                  <Tooltip />
+                   <RechartsTooltip />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -558,7 +563,7 @@ export default function Analytics() {
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                   />
-                  <Tooltip
+                   <RechartsTooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--background))",
                       border: "1px solid hsl(var(--border))",
@@ -607,7 +612,7 @@ export default function Analytics() {
                     allowDuplicatedCategory={false}
                   />
                   <YAxis />
-                  <Tooltip />
+                   <RechartsTooltip />
                   <Legend />
                   {healthTrends?.labTrends?.map((test, index) => (
                     <Line
