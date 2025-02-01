@@ -6,7 +6,8 @@ import connectPg from "connect-pg-simple";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, insertUserSchema, type SelectUser } from "@db/schema";
-import { db, pool } from "@db";
+import { db } from "@db";
+import { createPool } from "@vercel/postgres";
 import { eq } from "drizzle-orm";
 import { fromZodError } from "zod-validation-error";
 
@@ -15,6 +16,11 @@ declare global {
     interface User extends SelectUser {}
   }
 }
+
+// Create PostgreSQL pool
+const pool = createPool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 const scryptAsync = promisify(scrypt);
 const PostgresSessionStore = connectPg(session);
@@ -87,12 +93,17 @@ export function setupAuth(app: Express) {
       return res.status(400).send("Username already exists");
     }
 
+    const hashedPassword = await hashPassword(result.data.password);
+    const userData = {
+      username: result.data.username,
+      password: hashedPassword,
+      email: result.data.email,
+      role: result.data.role,
+    };
+
     const [user] = await db
       .insert(users)
-      .values({
-        ...result.data,
-        password: await hashPassword(result.data.password),
-      })
+      .values(userData)
       .returning();
 
     req.login(user, (err) => {

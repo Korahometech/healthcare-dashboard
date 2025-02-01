@@ -3,6 +3,8 @@ import {
   useQuery,
   useMutation,
   UseMutationResult,
+  QueryFunction,
+  QueryKey,
 } from "@tanstack/react-query";
 import type { SelectUser, InsertUser } from "@db/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
@@ -26,15 +28,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     data: user,
     error,
     isLoading,
-  } = useQuery<SelectUser | undefined, Error>({
-    queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+  } = useQuery<SelectUser | null, Error>({
+    queryKey: ["/api/user"] as const,
+    queryFn: getQueryFn({ on401: "returnNull" }) as QueryFunction<SelectUser | null, QueryKey>,
   });
 
-  const loginMutation = useMutation({
+  const loginMutation = useMutation<SelectUser, Error, LoginData>({
     mutationFn: async (credentials: LoginData) => {
       const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      return res.json();
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
@@ -48,10 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const registerMutation = useMutation({
+  const registerMutation = useMutation<SelectUser, Error, InsertUser>({
     mutationFn: async (newUser: InsertUser) => {
       const res = await apiRequest("POST", "/api/register", newUser);
-      return await res.json();
+      return res.json();
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
@@ -65,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const logoutMutation = useMutation({
+  const logoutMutation = useMutation<void, Error, void>({
     mutationFn: async () => {
       await apiRequest("POST", "/api/logout");
     },

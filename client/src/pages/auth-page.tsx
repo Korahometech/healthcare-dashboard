@@ -10,6 +10,8 @@ import { insertUserSchema } from "@db/schema";
 import { useLocation } from "wouter";
 import type { InsertUser } from "@db/schema";
 
+type RegisterFormData = Omit<InsertUser, "role">;
+
 export default function AuthPage() {
   const { loginMutation, registerMutation, user } = useAuth();
   const [, setLocation] = useLocation();
@@ -20,21 +22,30 @@ export default function AuthPage() {
     return null;
   }
 
-  const loginForm = useForm({
+  const loginForm = useForm<Pick<InsertUser, "username" | "password">>({
     defaultValues: {
       username: "",
       password: "",
     },
   });
 
-  const registerForm = useForm({
-    resolver: zodResolver(insertUserSchema),
+  const registerForm = useForm<RegisterFormData>({
+    resolver: zodResolver(insertUserSchema.omit({ role: true })),
     defaultValues: {
       username: "",
       password: "",
       email: "",
     },
   });
+
+  const handleRegister = (data: RegisterFormData) => {
+    // Add default role
+    const fullData: InsertUser = {
+      ...data,
+      role: "user",
+    };
+    registerMutation.mutate(fullData);
+  };
 
   return (
     <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
@@ -95,9 +106,7 @@ export default function AuthPage() {
               </TabsContent>
               <TabsContent value="register" className="space-y-4">
                 <form
-                  onSubmit={registerForm.handleSubmit((data: InsertUser) =>
-                    registerMutation.mutate(data)
-                  )}
+                  onSubmit={registerForm.handleSubmit(handleRegister)}
                   className="space-y-4"
                 >
                   <div className="space-y-2">
