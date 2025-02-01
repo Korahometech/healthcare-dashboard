@@ -76,7 +76,13 @@ export default function Appointments() {
 
   const onSubmit = async (values: CreateAppointmentInput) => {
     try {
-      await createAppointment(values);
+      // Ensure the date is properly formatted
+      const formattedValues = {
+        ...values,
+        date: values.date instanceof Date ? values.date.toISOString() : new Date(values.date).toISOString(),
+      };
+
+      await createAppointment(formattedValues);
       setOpen(false);
       form.reset();
       toast({

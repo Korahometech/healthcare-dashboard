@@ -405,10 +405,20 @@ export function registerRoutes(app: Express): Server {
     const { isTeleconsultation, meetingUrl, duration, ...appointmentData } = req.body;
 
     try {
+      // Convert date string to Date object
+      const appointmentDate = new Date(appointmentData.date);
+      if (isNaN(appointmentDate.getTime())) {
+        throw new Error('Invalid appointment date');
+      }
+
       const appointment = await db.transaction(async (tx) => {
         const [newAppointment] = await tx
           .insert(appointments)
-          .values(appointmentData)
+          .values({
+            ...appointmentData,
+            date: appointmentDate,
+            actualStartTime: null, // Initialize as null
+          })
           .returning();
 
         if (isTeleconsultation) {
@@ -416,7 +426,7 @@ export function registerRoutes(app: Express): Server {
             appointmentId: newAppointment.id,
             meetingUrl,
             duration,
-            startTime: new Date(appointmentData.date),
+            startTime: appointmentDate,
             status: "scheduled",
           });
         }
@@ -433,7 +443,7 @@ export function registerRoutes(app: Express): Server {
         },
       });
 
-      if (appointmentWithDetails && appointmentWithDetails.patient && appointmentWithDetails.doctor) {
+      if (appointmentWithDetails?.patient && appointmentWithDetails.doctor) {
         const emailData = generateAppointmentEmail({
           date: appointmentWithDetails.date,
           patient: appointmentWithDetails.patient,
