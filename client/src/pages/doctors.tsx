@@ -75,12 +75,18 @@ export default function Doctors() {
       qualification: "",
       experience: 0,
       availableDays: [],
+      startDate: null,
     },
   });
 
   const onSubmit = async (values: InsertDoctor) => {
     try {
-      await createDoctor(values);
+      const formattedValues = {
+        ...values,
+        startDate: values.startDate ? new Date(values.startDate).toISOString() : null,
+      };
+
+      await createDoctor(formattedValues);
       setOpen(false);
       form.reset();
       toast({
@@ -151,8 +157,8 @@ export default function Doctors() {
                       <FormItem>
                         <FormLabel>Phone</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="+1234567890" 
+                          <Input
+                            placeholder="+1234567890"
                             value={field.value || ""}
                             onChange={field.onChange}
                           />
@@ -202,8 +208,8 @@ export default function Doctors() {
                       <FormItem>
                         <FormLabel>Qualification</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="MD, PhD" 
+                          <Input
+                            placeholder="MD, PhD"
                             value={field.value || ""}
                             onChange={field.onChange}
                           />
@@ -250,7 +256,7 @@ export default function Doctors() {
                               )}
                             >
                               {field.value ? (
-                                format(field.value, "PPP")
+                                format(new Date(field.value), "PPP")
                               ) : (
                                 <span>Pick a date</span>
                               )}
@@ -261,7 +267,7 @@ export default function Doctors() {
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
-                            selected={field.value || undefined}
+                            selected={field.value ? new Date(field.value) : undefined}
                             onSelect={field.onChange}
                             initialFocus
                           />
