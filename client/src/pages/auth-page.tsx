@@ -17,7 +17,6 @@ export default function AuthPage() {
   const { loginMutation, registerMutation, user } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Redirect if already logged in
   if (user) {
     setLocation("/");
     return null;
@@ -39,15 +38,14 @@ export default function AuthPage() {
     },
   });
 
-  const handleRegister = (data: RegisterFormData) => {
-    const fullData: InsertUser = {
+  const onRegister = (data: RegisterFormData) => {
+    registerMutation.mutate({
       ...data,
       role: "user",
-    };
-    registerMutation.mutate(fullData);
+    });
   };
 
-  const handleLogin = (data: LoginFormData) => {
+  const onLogin = (data: LoginFormData) => {
     loginMutation.mutate(data);
   };
 
@@ -76,10 +74,7 @@ export default function AuthPage() {
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
               <TabsContent value="login" className="space-y-4">
-                <form
-                  onSubmit={loginForm.handleSubmit(handleLogin)}
-                  className="space-y-4"
-                >
+                <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="username">Username</Label>
                     <Input
@@ -108,10 +103,7 @@ export default function AuthPage() {
                 </form>
               </TabsContent>
               <TabsContent value="register" className="space-y-4">
-                <form
-                  onSubmit={registerForm.handleSubmit(handleRegister)}
-                  className="space-y-4"
-                >
+                <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="reg-username">Username</Label>
                     <Input
