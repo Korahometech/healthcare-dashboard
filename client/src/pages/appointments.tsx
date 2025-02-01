@@ -57,7 +57,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Extended appointment type to include all properties we're using
 type ExtendedAppointment = SelectAppointment & {
   patient?: { name: string };
   duration?: number;
@@ -65,7 +64,6 @@ type ExtendedAppointment = SelectAppointment & {
   meetingUrl?: string;
 };
 
-// Simplified appointment schema
 const createAppointmentSchema = insertAppointmentSchema.extend({
   doctorId: z.number(),
   duration: z.number().default(30),
