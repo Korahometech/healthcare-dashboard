@@ -10,6 +10,7 @@ import { insertUserSchema } from "@db/schema";
 import { useLocation } from "wouter";
 import type { InsertUser } from "@db/schema";
 
+type LoginFormData = Pick<InsertUser, "username" | "password">;
 type RegisterFormData = Omit<InsertUser, "role">;
 
 export default function AuthPage() {
@@ -22,7 +23,7 @@ export default function AuthPage() {
     return null;
   }
 
-  const loginForm = useForm<Pick<InsertUser, "username" | "password">>({
+  const loginForm = useForm<LoginFormData>({
     defaultValues: {
       username: "",
       password: "",
@@ -39,7 +40,6 @@ export default function AuthPage() {
   });
 
   const handleRegister = (data: RegisterFormData) => {
-    // Add default role
     const fullData: InsertUser = {
       ...data,
       role: "user",
