@@ -5,7 +5,7 @@ import { useMedicalHistory } from "./use-medical-history";
 import type { TimelineEvent } from "@/components/ui/timeline";
 
 export function usePatientTimeline(patientId: number | null) {
-  const { data: appointments = [], isLoading: isLoadingAppointments } = useAppointments();
+  const { appointments = [], isLoading: isLoadingAppointments } = useAppointments();
   const { data: labResults = [], isLoading: isLoadingLabResults } = useLabResults(patientId ?? 0);
   const { history = [], isLoading: isLoadingHistory } = useMedicalHistory(patientId ?? 0);
 
@@ -21,11 +21,18 @@ export function usePatientTimeline(patientId: number | null) {
           timelineEvents.push({
             id: appointment.id,
             type: "appointment",
-            title: "Medical Appointment",
+            title: appointment.type || "Medical Appointment",
             description: appointment.notes || "Regular checkup appointment",
             date: new Date(appointment.date),
             status: appointment.status,
+            providers: appointment.doctorId ? [{
+              name: appointment.doctorName || "Doctor",
+              role: appointment.doctorSpecialty || "Physician"
+            }] : undefined,
             metadata: {
+              location: appointment.location || "Main Clinic",
+              duration: appointment.duration || "30 mins",
+              type: appointment.type || "Regular Checkup",
               notes: appointment.notes || "No additional notes"
             },
           });
@@ -34,6 +41,7 @@ export function usePatientTimeline(patientId: number | null) {
 
       // Add lab results to timeline
       labResults.forEach((result) => {
+        const isAbnormal = result.value < (result.referenceMin || 0) || result.value > (result.referenceMax || 0);
         timelineEvents.push({
           id: result.id,
           type: "lab_result",
@@ -41,11 +49,14 @@ export function usePatientTimeline(patientId: number | null) {
           description: `Result: ${result.value} ${result.unit}`,
           date: new Date(result.testDate),
           status: result.status,
+          severity: isAbnormal ? "high" : "low",
           metadata: {
             value: `${result.value} ${result.unit}`,
             reference_range: result.referenceMin && result.referenceMax ? 
               `${result.referenceMin}-${result.referenceMax} ${result.unit}` : 
               "Not specified",
+            lab_name: result.labName || "Main Laboratory",
+            ordering_provider: result.orderingProvider || "Not specified"
           },
         });
       });
@@ -54,11 +65,13 @@ export function usePatientTimeline(patientId: number | null) {
       history.forEach((event) => {
         timelineEvents.push({
           id: event.id,
-          type: "treatment",
+          type: event.type as TimelineEvent["type"],
           title: event.title,
           description: event.description || "",
           date: new Date(event.date),
           status: event.status || "completed",
+          severity: event.severity as "low" | "medium" | "high" | undefined,
+          providers: event.providers,
           metadata: event.metadata || {},
         });
       });

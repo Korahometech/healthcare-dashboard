@@ -80,7 +80,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Patient } from "@db/schema";
 import { insertPatientSchema } from "@db/schema";
 import { Timeline } from "@/components/ui/timeline";
-import { usePatientTimeline } from "@/hooks/use-patient-timeline";
+import { usePatientTimeline, TimelineEvent } from "@/hooks/use-patient-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 
@@ -102,6 +102,46 @@ type InsertPatient = Omit<Patient, "id" | "createdAt"> & {
   status?: "active" | "inactive";
 };
 
+const PatientTimeline = ({ patientId, onClose }: { patientId: number; onClose: () => void }) => {
+  const { data: timeline, isLoading } = usePatientTimeline(patientId);
+  const { toast } = useToast();
+
+  const handleEventClick = (event: TimelineEvent) => {
+    toast({
+      title: event.title,
+      description: event.description,
+      variant: event.severity === "high" ? "destructive" : "default",
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Patient Timeline</h2>
+        <Button variant="ghost" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+
+      {timeline?.length ? (
+        <Timeline events={timeline} onEventClick={handleEventClick} />
+      ) : (
+        <p className="text-center text-muted-foreground py-8">
+          No timeline events found for this patient.
+        </p>
+      )}
+    </div>
+  );
+};
+
 export default function Patients() {
   const [open, setOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<number | null>(null);
@@ -111,8 +151,8 @@ export default function Patients() {
     status: "all",
   });
   const { patients, createPatient, deletePatient, isLoading } = usePatients();
-  const { data: timeline, isLoading: isLoadingTimeline } = usePatientTimeline(selectedPatient);
   const { toast } = useToast();
+
 
   const filteredPatients = patients.filter((patient) => {
     const matchesSearch = patient.name.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
@@ -517,28 +557,11 @@ export default function Patients() {
                   <TabsTrigger value="records">Medical Records</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="timeline" className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold">Patient Timeline</h2>
-                    <Button
-                      variant="ghost"
-                      onClick={() => setSelectedPatient(null)}
-                    >
-                      Close
-                    </Button>
-                  </div>
-
-                  {isLoadingTimeline ? (
-                    <div className="flex justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : timeline?.length ? (
-                    <Timeline events={timeline} />
-                  ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No timeline events found for this patient.
-                    </p>
-                  )}
+                <TabsContent value="timeline">
+                  <PatientTimeline 
+                    patientId={selectedPatient} 
+                    onClose={() => setSelectedPatient(null)} 
+                  />
                 </TabsContent>
 
                 <TabsContent value="records">
