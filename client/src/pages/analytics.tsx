@@ -75,8 +75,8 @@ type AppointmentTimeRange = "daily" | "weekly" | "monthly";
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState<TimeRange>("6M");
   const [appointmentTimeRange, setAppointmentTimeRange] = useState<AppointmentTimeRange>("weekly");
-  const { appointments, isLoading: appointmentsLoading } = useAppointments();
-  const { patients, isLoading: patientsLoading } = usePatients();
+  const { appointments = [], isLoading: appointmentsLoading } = useAppointments();
+  const { patients = [], isLoading: patientsLoading } = usePatients();
   const { data: healthTrends, isLoading: healthTrendsLoading } = useHealthTrends(undefined, timeRange);
 
   const isLoading = appointmentsLoading || patientsLoading || healthTrendsLoading;
@@ -88,14 +88,6 @@ export default function Analytics() {
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
           <p className="text-sm text-muted-foreground">Loading analytics data...</p>
         </div>
-      </div>
-    );
-  }
-
-  if (!appointments || !patients || !healthTrends) {
-    return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <p className="text-sm text-muted-foreground">Error loading analytics data</p>
       </div>
     );
   }
@@ -179,7 +171,7 @@ export default function Analytics() {
                 <YAxis />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                {healthTrends.detailedTrends?.map((trend, index) => (
+                {healthTrends?.detailedTrends?.map((trend, index) => (
                   <React.Fragment key={trend.category}>
                     <Line
                       type="monotone"
@@ -227,18 +219,18 @@ export default function Analytics() {
                   type="number"
                   dataKey="value1"
                   name="metric1"
-                  label={{ value: healthTrends.metricCorrelations?.[0]?.metric1, position: 'bottom' }}
+                  label={{ value: healthTrends?.metricCorrelations?.[0]?.metric1 ?? '', position: 'bottom' }}
                 />
                 <YAxis
                   type="number"
                   dataKey="value2"
                   name="metric2"
-                  label={{ value: healthTrends.metricCorrelations?.[0]?.metric2, angle: -90, position: 'left' }}
+                  label={{ value: healthTrends?.metricCorrelations?.[0]?.metric2 ?? '', angle: -90, position: 'left' }}
                 />
                 <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                 <Scatter
                   name="Health Metrics"
-                  data={healthTrends.metricCorrelations}
+                  data={healthTrends?.metricCorrelations ?? []}
                   fill={COLORS[0]}
                 />
               </ScatterChart>
@@ -379,7 +371,7 @@ export default function Analytics() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                {healthTrends.labTrends?.map((test, index) => (
+                {healthTrends?.labTrends?.map((test, index) => (
                   <Line
                     key={test.testName}
                     data={test.trends}
@@ -416,20 +408,20 @@ export default function Analytics() {
                     type="number" 
                     dataKey="value1" 
                     name="metric1"
-                    label={{ value: healthTrends.metricCorrelations?.[0]?.metric1, position: 'bottom' }}
+                    label={{ value: healthTrends?.metricCorrelations?.[0]?.metric1 ?? '', position: 'bottom' }}
                   />
                   <YAxis 
                     type="number" 
                     dataKey="value2" 
                     name="metric2"
-                    label={{ value: healthTrends.metricCorrelations?.[0]?.metric2, angle: -90, position: 'left' }}
+                    label={{ value: healthTrends?.metricCorrelations?.[0]?.metric2 ?? '', angle: -90, position: 'left' }}
                   />
                   <ZAxis 
                     type="number"
                     range={[100, 100]}
                   />
                   <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                  <Scatter name="Metrics" data={healthTrends.metricCorrelations} fill={COLORS[0]} />
+                  <Scatter name="Metrics" data={healthTrends?.metricCorrelations ?? []} fill={COLORS[0]} />
                 </ScatterChart>
               </ResponsiveContainer>
             </div>
@@ -454,6 +446,7 @@ export default function Analytics() {
                   <Radar
                     name="Risk Factors"
                     dataKey="patientCount"
+                    data={healthTrends?.riskFactors ?? []}
                     stroke={COLORS[0]}
                     fill={COLORS[0]}
                     fillOpacity={0.6}
