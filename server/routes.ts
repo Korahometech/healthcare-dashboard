@@ -685,45 +685,7 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-  /**
-   * @swagger
-   * /api/patients/{patientId}/symptom-journals:
-   *   post:
-   *     summary: Create a symptom journal entry with AI analysis
-   *     tags: [Symptoms]
-   *     parameters:
-   *       - in: path
-   *         name: patientId
-   *         required: true
-   *         schema:
-   *           type: integer
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - symptoms
-   *               - severity
-   *               - mood
-   *             properties:
-   *               symptoms:
-   *                 type: array
-   *                 items:
-   *                   type: string
-   *               severity:
-   *                 type: integer
-   *                 minimum: 1
-   *                 maximum: 10
-   *               mood:
-   *                 type: string
-   *               notes:
-   *                 type: string
-   *     responses:
-   *       201:
-   *         description: Journal entry created with AI analysis
-   */
+  
   app.post("/api/patients/:patientId/symptom-journals", async (req, res) => {
     try {
       const patientId = parseInt(req.params.patientId);
@@ -737,166 +699,8 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Only attempt AI analysis if OpenAI API key is available
-      if (process.env.OPENAI_API_KEY) {
-        try {
-          // Get comprehensive patient history for better personalization
-          const [patientDetails] = await db
-            .select()
-            .from(patients)
-            .where(eq(patients.id, patientId))
-            .limit(1);
-
-          // Get recent symptom history with analysis
-          const patientHistory = await db.query.symptomJournals.findMany({
-            where: eq(symptomJournals.patientId, patientId),
-            orderBy: [desc(symptomJournals.dateRecorded)],
-            limit: 10,
-            with: {
-              analysis: true,
-            },
-          });
-
-          // Extract patterns and trends from history
-          const historicalPatterns = patientHistory.reduce((acc, entry) => {
-            entry.symptoms?.forEach(symptom => {
-              if (!acc[symptom]) {
-                acc[symptom] = {
-                  count: 0,
-                  avgSeverity: 0,
-                  commonMoods: new Set(),
-                  effectiveness: [] // Track which suggestions helped
-                };
-              }
-              acc[symptom].count++;
-              acc[symptom].avgSeverity += entry.severity;
-              acc[symptom].commonMoods.add(entry.mood);
-
-              // Track which suggestions were effective
-              entry.analysis?.forEach(analysis => {
-                if (analysis.suggestedActions) {
-                  acc[symptom].effectiveness.push({
-                    actions: analysis.suggestedActions,
-                    nextSeverity: patientHistory.find(h => 
-                      h.dateRecorded > entry.dateRecorded
-                    )?.severity || entry.severity
-                  });
-                }
-              });
-            });
-            return acc;
-          }, {} as Record<string, {
-            count: number;
-            avgSeverity: number;
-            commonMoods: Set<string>;
-            effectiveness: Array<{
-              actions: string[];
-              nextSeverity: number;
-            }>;
-          }>);
-
-          // Generate personalized prompt based on history
-          const prompt = {
-            role: "system",
-            content: `You are an advanced medical analysis assistant specializing in personalized healthcare insights.
-Analyze the patient's symptom patterns and provide highly personalized recommendations.
-
-Key Patient Information:
-- Health Conditions: ${patientDetails.healthConditions?.join(', ') || 'None recorded'}
-- Medications: ${patientDetails.medications?.join(', ') || 'None recorded'}
-- Allergies: ${patientDetails.allergies?.join(', ') || 'None recorded'}
-- Chronic Conditions: ${patientDetails.chronicConditions?.join(', ') || 'None recorded'}
-
-Historical Pattern Analysis:
-${Object.entries(historicalPatterns).map(([symptom, data]) => `
-${symptom}:
-- Frequency: ${data.count} occurrences
-- Average Severity: ${(data.avgSeverity / data.count).toFixed(1)}
-- Common Moods: ${Array.from(data.commonMoods).join(', ')}
-- Most Effective Actions: ${data.effectiveness
-  .filter(e => e.nextSeverity < e.actions.length)
-  .map(e => e.actions)
-  .flat()
-  .slice(0, 3)
-  .join(', ')}
-`).join('\n')}
-
-Recent History:
-${patientHistory.map(h => `
-Date: ${h.dateRecorded}
-Symptoms: ${h.symptoms?.join(", ") || "None"}
-Severity: ${h.severity}
-Mood: ${h.mood}
-`).join("\n")}
-
-Provide analysis in JSON format with fields:
-- analysis (string): Detailed analysis incorporating historical patterns
-- sentiment (positive/negative/neutral): Overall health trajectory
-- suggestedActions (array of strings): Personalized recommendations based on what has worked before
-- confidence (number between 0 and 1): Confidence in the analysis
-- trends (object): {
-    pattern: string (identified pattern),
-    triggers: array of strings (potential triggers),
-    improvements: array of strings (areas showing improvement),
-    concerns: array of strings (areas needing attention)
-  }`
-          };
-
-          const userMessage = {
-            role: "user",
-            content: `
-Current Entry:
-Symptoms: ${req.body.symptoms.join(", ")}
-Severity: ${req.body.severity}
-Mood: ${req.body.mood}
-Notes: ${req.body.notes || "None"}
-
-Compare this with historical patterns and provide personalized insights.`
-          };
-
-          const response = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages: [prompt, userMessage],
-            response_format: { type: "json_object" },
-          });
-
-
-          const analysis = JSON.parse(response.choices[0].message.content || "{}");
-
-          // Save enhanced AI analysis
-          const [savedAnalysis] = await db
-            .insert(symptomAnalysis)
-            .values({
-              journalId: journal.id,
-              analysis: analysis.analysis,
-              sentiment: analysis.sentiment,
-              suggestedActions: analysis.suggestedActions,
-              aiConfidence: analysis.confidence,
-              // Add additional analysis data as JSON in the analysis field
-              details: JSON.stringify({
-                trends: analysis.trends,
-                historicalPatterns
-              })
-            })
-            .returning();
-
-          return res.status(201).json({
-            journal,
-            analysis: savedAnalysis,
-          });
-        } catch (aiError) {
-          console.error("AI analysis failed:", aiError);
-          return res.status(201).json({
-            journal,
-            analysis: null,
-          });
-        }
-      }
-
-      // Return journal without analysis if no OpenAI API key
       res.status(201).json({
-        journal,
-        analysis: null,
+        journal
       });
     } catch (error: any) {
       console.error("Error creating symptom journal:", error);
@@ -911,7 +715,7 @@ Compare this with historical patterns and provide personalized insights.`
    * @swagger
    * /api/patients/{patientId}/symptom-journals:
    *   get:
-   *     summary: Get patient's symptom journal entries with analysis
+   *     summary: Get patient's symptom journal entries
    *     tags: [Symptoms]
    *     parameters:
    *       - in: path
@@ -921,16 +725,13 @@ Compare this with historical patterns and provide personalized insights.`
    *           type: integer
    *     responses:
    *       200:
-   *         description: List of journal entries with analysis
+   *         description: List of journal entries
    */
   app.get("/api/patients/:patientId/symptom-journals", async (req, res) => {
     try {
       const journals = await db.query.symptomJournals.findMany({
         where: eq(symptomJournals.patientId, parseInt(req.params.patientId)),
         orderBy: [desc(symptomJournals.dateRecorded)],
-        with: {
-          analysis: true,
-        },
       });
       res.json(journals);
     } catch (error: any) {
