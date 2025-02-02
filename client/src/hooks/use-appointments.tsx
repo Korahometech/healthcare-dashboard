@@ -33,7 +33,30 @@ export function useAppointments() {
 
       return response.json();
     },
-    onSuccess: (updatedAppointment) => {
+    onMutate: async ({ id, status }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
+
+      // Snapshot the previous value
+      const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
+
+      // Optimistically update to the new value
+      if (previousAppointments) {
+        queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], 
+          previousAppointments.map(appointment => 
+            appointment.id === id ? { ...appointment, status } : appointment
+          )
+        );
+      }
+
+      return { previousAppointments };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(["/api/appointments"], context.previousAppointments);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });
