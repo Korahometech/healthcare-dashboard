@@ -176,10 +176,10 @@ export default function Appointments() {
               New Appointment
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="sm:max-w-[425px]" aria-labelledby="dialog-title" aria-describedby="dialog-description">
             <DialogHeader>
-              <DialogTitle>Schedule New Appointment</DialogTitle>
-              <DialogDescription>
+              <DialogTitle id="dialog-title">Schedule New Appointment</DialogTitle>
+              <DialogDescription id="dialog-description">
                 Fill in the details to schedule a new patient appointment.
               </DialogDescription>
             </DialogHeader>
