@@ -1,5 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { SelectAppointment } from "@db/schema";
 
 interface UpdateAppointmentStatus {
@@ -8,6 +7,8 @@ interface UpdateAppointmentStatus {
 }
 
 export function useAppointments() {
+  const queryClient = useQueryClient();
+
   const {
     data: appointments = [],
     isLoading,
@@ -31,8 +32,15 @@ export function useAppointments() {
       if (!response.ok) throw new Error("Failed to update appointment status");
       return response.json();
     },
-    onSuccess: () => {
-      // Invalidate and refetch appointments after status update
+    onSuccess: (updatedAppointment) => {
+      // Update the cache with the new appointment data
+      queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], (old) => {
+        if (!old) return [updatedAppointment];
+        return old.map((appointment) =>
+          appointment.id === updatedAppointment.id ? updatedAppointment : appointment
+        );
+      });
+      // Also invalidate to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });
@@ -44,10 +52,16 @@ export function useAppointments() {
       body: JSON.stringify(appointmentData),
     });
     if (!response.ok) throw new Error("Failed to create appointment");
-    
-    // Invalidate and refetch after creating new appointment
+
+    const newAppointment = await response.json();
+    // Update cache immediately
+    queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], (old) => {
+      if (!old) return [newAppointment];
+      return [...old, newAppointment];
+    });
+    // Also invalidate to ensure fresh data
     queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
-    return response.json();
+    return newAppointment;
   };
 
   const deleteAppointment = async (id: number) => {
@@ -55,8 +69,13 @@ export function useAppointments() {
       method: "DELETE",
     });
     if (!response.ok) throw new Error("Failed to delete appointment");
-    
-    // Invalidate and refetch after deleting appointment
+
+    // Update cache immediately
+    queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], (old) => {
+      if (!old) return [];
+      return old.filter((appointment) => appointment.id !== id);
+    });
+    // Also invalidate to ensure fresh data
     queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     return response.json();
   };
