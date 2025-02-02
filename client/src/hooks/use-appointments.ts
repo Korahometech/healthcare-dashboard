@@ -75,11 +75,18 @@ export function useAppointments() {
       const res = await fetch(`/api/appointments/${id}`, {
         method: "DELETE",
       });
+
       if (!res.ok) {
         const error = await res.text();
         throw new Error(error || "Failed to delete appointment");
       }
-      return res.json();
+
+      // Handle both cases: JSON response or no content
+      const contentType = res.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return res.json();
+      }
+      return null; // Return null for successful deletion with no content
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
