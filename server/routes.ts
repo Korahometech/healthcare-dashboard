@@ -991,57 +991,75 @@ export function registerRoutes(app: Express): Server {
       // Generate AI analysis
       const prompt = {
         role: "system",
-        content: "Youare a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
+        content: "You are a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
       };
 
       const userMessage = {
         role: "user",
         content: `
 Current Entry:
-Symptoms: ${req.body.symptoms.join(", ")}
-Severity: ${req.body.severity}
-Mood: ${req.body.mood}
-Notes: ${req.body.notes || "None"}
+Symptoms: ${journal.symptoms.join(', ')}
+Severity: ${journal.severity}/10
+Mood: ${journal.mood}
+Notes: ${journal.notes || 'None'}
 
-Recent History:
-${patientHistory.map(h => `
-Date: ${h.dateRecorded}
-Symptoms: ${h.symptoms.join(", ")}
-Severity: ${h.severity}
+Previous History:
+${patientHistory.slice(1).map(h => `
+Date: ${new Date(h.dateRecorded!).toLocaleDateString()}
+Symptoms: ${h.symptoms?.join(', ')}
+Severity: ${h.severity}/10
 Mood: ${h.mood}
-`).join("\n")}
+`).join('\n')}
 `
       };
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [prompt, userMessage],
-        response_format: { type: "json_object" },
-      });
+      try {
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [prompt, userMessage],
+          temperature: 0.7,
+          max_tokens: 500,
+        });
 
-      const analysis = JSON.parse(response.choices[0].message.content);
+        const aiResponse = JSON.parse(completion.choices[0].message.content);
 
-      // Save AI analysis
-      const [savedAnalysis] = await db
-        .insert(symptomAnalysis)
-        .values({
-          journalId: journal.id,
-          analysis: analysis.analysis,
-          sentiment: analysis.sentiment,
-          suggestedActions: analysis.suggestedActions,
-          aiConfidence: analysis.confidence,
-        })
-        .returning();
+        // Create analysis record
+        const [analysis] = await db
+          .insert(symptomAnalysis)
+          .values({
+            journalId: journal.id,
+            analysis: aiResponse.analysis,
+            sentiment: aiResponse.sentiment,
+            suggestedActions: aiResponse.suggestedActions,
+            aiConfidence: aiResponse.confidence,
+          })
+          .returning();
 
-      res.status(201).json({
-        journal,
-        analysis: savedAnalysis,
-      });
+        // Return both journal and analysis
+        const journalWithAnalysis = {
+          ...journal,
+          analysis: [analysis],
+        };
+
+        res.json(journalWithAnalysis);
+      } catch (error) {
+        console.error('Error generating AI analysis:', error);
+        // Return the journal entry even if AI analysis fails
+        res.json({
+          ...journal,
+          analysis: [{
+            analysis: "Unable to generate AI analysis at this time.",
+            sentiment: "neutral",
+            suggestedActions: ["Please consult with your healthcare provider for a proper analysis."],
+            aiConfidence: 0
+          }]
+        });
+      }
     } catch (error: any) {
-      console.error("Error creating symptom journal:", error);
+      console.error('Error creating symptom journal:', error);
       res.status(500).json({
-        error: "Failed to create symptom journal",
-        details: error.message,
+        error: 'Failed to create symptom journal',
+        details: error.message
       });
     }
   });
