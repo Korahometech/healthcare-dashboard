@@ -85,7 +85,7 @@ const DURATIONS = [
 export default function Appointments() {
   const [open, setOpen] = useState(false);
   const [rescheduleAppointment, setRescheduleAppointment] = useState<ExtendedAppointment | null>(null);
-  const { appointments, updateStatus, createAppointment, updateAppointment, deleteAppointment, updateAppointmentStatus } = useAppointments();
+  const { appointments, createAppointment, updateAppointment, deleteAppointment, updateAppointmentStatus } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
@@ -405,13 +405,18 @@ export default function Appointments() {
                   value={appointment.status}
                   onValueChange={async (value) => {
                     try {
-                      await updateAppointmentStatus({ id: appointment.id, status: value });
+                      console.log('Attempting to update status:', { id: appointment.id, status: value }); // Debug log
+                      await updateAppointmentStatus({ 
+                        id: appointment.id, 
+                        status: value 
+                      });
                       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
                       toast({
                         title: "Success",
                         description: `Status updated to ${value}`,
                       });
                     } catch (error: any) {
+                      console.error('Status update failed:', error); // Debug log
                       toast({
                         title: "Error",
                         description: error.message || "Failed to update status",
