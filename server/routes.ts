@@ -284,25 +284,70 @@ export function registerRoutes(app: Express): Server {
     try {
       const patientId = parseInt(req.params.id);
 
-      await db.transaction(async (tx) => {
-        await tx.delete(appointments).where(eq(appointments.patientId, patientId));
-        await tx.delete(labResults).where(eq(labResults.patientId, patientId));
-        await tx.delete(carePlans).where(eq(carePlans.patientId, patientId));
-        await tx.delete(geneticProfiles).where(eq(geneticProfiles.patientId, patientId));
-        await tx.delete(biomarkerData).where(eq(biomarkerData.patientId, patientId));
-        await tx.delete(treatmentResponses).where(eq(treatmentResponses.patientId, patientId));
-        await tx.delete(environmentalFactors).where(eq(environmentalFactors.patientId, patientId));
-        await tx.delete(riskAssessments).where(eq(riskAssessments.patientId, patientId));
-
-        await tx.delete(patients).where(eq(patients.id, patientId));
+      // Verify if patient exists before attempting deletion
+      const patient = await db.query.patients.findFirst({
+        where: eq(patients.id, patientId),
       });
 
-      res.json({ success: true, message: 'Patient and related records deleted successfully' });
+      if (!patient) {
+        return res.status(404).json({
+          error: 'Patient not found',
+          message: 'The specified patient does not exist'
+        });
+      }
+
+      await db.transaction(async (tx) => {
+        // Delete symptom analysis records first
+        await tx.delete(symptomAnalysis)
+          .where(
+            eq(symptomAnalysis.journalId,
+              db.select({ id: symptomJournals.id })
+                .from(symptomJournals)
+                .where(eq(symptomJournals.patientId, patientId))
+                .limit(1)
+            )
+          );
+
+        // Delete symptom journals
+        await tx.delete(symptomJournals)
+          .where(eq(symptomJournals.patientId, patientId));
+
+        // Delete all associated records
+        await tx.delete(appointments)
+          .where(eq(appointments.patientId, patientId));
+        await tx.delete(labResults)
+          .where(eq(labResults.patientId, patientId));
+        await tx.delete(carePlans)
+          .where(eq(carePlans.patientId, patientId));
+        await tx.delete(geneticProfiles)
+          .where(eq(geneticProfiles.patientId, patientId));
+        await tx.delete(biomarkerData)
+          .where(eq(biomarkerData.patientId, patientId));
+        await tx.delete(treatmentResponses)
+          .where(eq(treatmentResponses.patientId, patientId));
+        await tx.delete(environmentalFactors)
+          .where(eq(environmentalFactors.patientId, patientId));
+        await tx.delete(riskAssessments)
+          .where(eq(riskAssessments.patientId, patientId));
+
+        // Finally delete the patient
+        await tx.delete(patients)
+          .where(eq(patients.id, patientId));
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Patient and all related records deleted successfully',
+        patientId 
+      });
     } catch (error: any) {
       console.error('Error deleting patient:', error);
       res.status(500).json({
         error: 'Failed to delete patient',
-        details: error.message
+        details: error.message,
+        // Add more specific error information
+        code: error.code,
+        constraint: error.constraint
       });
     }
   });
