@@ -90,11 +90,11 @@ export function useAppointments() {
       await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
 
       // Snapshot the previous value
-      const previousAppointments = queryClient.getQueryData(["/api/appointments"]);
+      const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]) || [];
 
       // Optimistically update to the new value
-      queryClient.setQueryData(["/api/appointments"], (old: SelectAppointment[] | undefined) => {
-        return old ? old.filter(appointment => appointment.id !== deletedId) : [];
+      queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], (old = []) => {
+        return old.filter(appointment => appointment.id !== deletedId);
       });
 
       // Return a context object with the snapshotted value
