@@ -592,8 +592,113 @@ export function registerRoutes(app: Express): Server {
       .returning();
     res.json(appointment[0]);
   });
-
     /**
+   * @swagger
+   * /api/appointments/{id}:
+   *   put:
+   *     summary: Update an appointment
+   *     description: Update an existing appointment's details
+   *     tags: [Appointments]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             $ref: '#/components/schemas/Appointment'
+   *     responses:
+   *       200:
+   *         description: Updated appointment
+   */
+  app.put("/api/appointments/:id", async (req, res) => {
+    try {
+      const appointmentId = parseInt(req.params.id);
+      const { isTeleconsultation, meetingUrl, duration, ...appointmentData } = req.body;
+
+      const appointment = await db.transaction(async (tx) => {
+        // Update the appointment
+        const [updatedAppointment] = await tx
+          .update(appointments)
+          .set({
+            ...appointmentData,
+            date: new Date(appointmentData.date),
+          })
+          .where(eq(appointments.id, appointmentId))
+          .returning();
+
+        // Update teleconsultation if it exists
+        if (isTeleconsultation !== undefined) {
+          if (isTeleconsultation) {
+            await tx
+              .insert(teleconsultations)
+              .values({
+                appointmentId,
+                meetingUrl,
+                duration,
+                startTime: new Date(appointmentData.date),
+                status: "scheduled",
+              })
+              .onConflictDoUpdate({
+                target: teleconsultations.appointmentId,
+                set: {
+                  meetingUrl,
+                  duration,
+                  startTime: new Date(appointmentData.date),
+                },
+              });
+          } else {
+            await tx
+              .delete(teleconsultations)
+              .where(eq(teleconsultations.appointmentId, appointmentId));
+          }
+        }
+
+        return updatedAppointment;
+      });
+
+      const appointmentWithDetails = await db.query.appointments.findFirst({
+        where: eq(appointments.id, appointmentId),
+        with: {
+          patient: true,
+          doctor: true,
+          teleconsultation: true,
+        },
+      });
+
+      if (appointmentWithDetails?.patient && appointmentWithDetails.doctor) {
+        const emailData = generateAppointmentEmail({
+          date: appointmentWithDetails.date,
+          patient: appointmentWithDetails.patient,
+          doctor: appointmentWithDetails.doctor,
+          notes: appointmentWithDetails.notes || undefined,
+          isTeleconsultation: !!appointmentWithDetails.teleconsultation,
+          meetingUrl: appointmentWithDetails.teleconsultation?.meetingUrl,
+        });
+
+        Promise.all([
+          sendEmail(emailData.patient),
+          sendEmail(emailData.doctor),
+        ]).catch((error) => {
+          console.error('Error sending appointment update emails:', error);
+        });
+      }
+
+      res.json(appointmentWithDetails);
+    } catch (error: any) {
+      console.error('Error updating appointment:', error);
+      res.status(500).json({
+        error: 'Failed to update appointment',
+        details: error.message,
+      });
+    }
+  });
+
+  /**
    * @swagger
    * /api/appointments/analytics/wait-time:
    *   get:

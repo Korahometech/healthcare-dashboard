@@ -20,7 +20,7 @@ import type { InsertAppointment } from "@db/schema";
 
 export default function Appointments() {
   const [open, setOpen] = useState(false);
-  const { appointments, createAppointment, updateStatus } = useAppointments();
+  const { appointments, createAppointment, updateStatus, updateAppointment } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
@@ -48,6 +48,22 @@ export default function Appointments() {
       toast({
         title: "Success",
         description: `Appointment ${status} successfully`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEdit = async (id: number, data: InsertAppointment) => {
+    try {
+      await updateAppointment({ id, ...data });
+      toast({
+        title: "Success",
+        description: "Appointment updated successfully",
       });
     } catch (error: any) {
       toast({
@@ -95,6 +111,9 @@ export default function Appointments() {
               date: new Date(apt.date),
             }))}
             onStatusChange={handleStatusChange}
+            onEdit={handleEdit}
+            patients={patients}
+            doctors={doctors}
           />
         </div>
       </div>

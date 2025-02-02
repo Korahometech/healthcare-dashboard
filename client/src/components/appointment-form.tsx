@@ -23,6 +23,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Textarea } from "./ui/textarea";
 
 const formSchema = z.object({
   patientId: z.number(),
@@ -35,12 +36,27 @@ interface AppointmentFormProps {
   patients: Array<{ id: number; name: string }>;
   doctors: Array<{ id: number; name: string }>;
   onSubmit: (data: z.infer<typeof formSchema>) => void;
+  defaultValues?: Partial<z.infer<typeof formSchema>>;
   className?: string;
+  title?: string;
 }
 
-export function AppointmentForm({ patients, doctors, onSubmit, className }: AppointmentFormProps) {
+export function AppointmentForm({ 
+  patients, 
+  doctors, 
+  onSubmit, 
+  defaultValues,
+  className,
+  title = "Schedule Appointment"
+}: AppointmentFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      patientId: defaultValues?.patientId,
+      doctorId: defaultValues?.doctorId,
+      date: defaultValues?.date ? new Date(defaultValues.date) : undefined,
+      notes: defaultValues?.notes,
+    },
   });
 
   const watchDoctorId = form.watch("doctorId");
@@ -49,7 +65,7 @@ export function AppointmentForm({ patients, doctors, onSubmit, className }: Appo
   return (
     <Card className={cn("transform transition-all duration-300 hover:shadow-lg", className)}>
       <CardHeader className="space-y-1 bg-gradient-to-br from-primary/5 to-primary/10">
-        <CardTitle className="text-2xl font-semibold">Schedule Appointment</CardTitle>
+        <CardTitle className="text-2xl font-semibold">{title}</CardTitle>
       </CardHeader>
       <CardContent className="pt-6">
         <Form {...form}>
@@ -161,6 +177,24 @@ export function AppointmentForm({ patients, doctors, onSubmit, className }: Appo
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      placeholder="Add any notes about the appointment"
+                      className="resize-none"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {watchDoctorId && watchDate && (
               <div className="pt-4">
                 <AppointmentAnalytics
@@ -174,7 +208,7 @@ export function AppointmentForm({ patients, doctors, onSubmit, className }: Appo
               type="submit"
               className="w-full transition-all duration-200 hover:shadow-md"
             >
-              Schedule Appointment
+              {defaultValues ? 'Update Appointment' : 'Schedule Appointment'}
             </Button>
           </form>
         </Form>
