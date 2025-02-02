@@ -403,24 +403,21 @@ export default function Appointments() {
                 />
                 <Select
                   value={appointment.status}
-                  onValueChange={async (value) => {
-                    try {
-                      await updateAppointmentStatus({ 
-                        id: appointment.id, 
-                        status: value 
+                  onValueChange={(value) => {
+                    updateAppointmentStatus({ id: appointment.id, status: value })
+                      .then(() => {
+                        toast({
+                          title: "Success",
+                          description: `Status updated to ${value}`,
+                        });
+                      })
+                      .catch((error) => {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Failed to update status",
+                          variant: "destructive",
+                        });
                       });
-                      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
-                      toast({
-                        title: "Success",
-                        description: `Status updated to ${value}`,
-                      });
-                    } catch (error: any) {
-                      toast({
-                        title: "Error",
-                        description: error.message || "Failed to update status",
-                        variant: "destructive",
-                      });
-                    }
                   }}
                 >
                   <SelectTrigger className="w-[140px]">
