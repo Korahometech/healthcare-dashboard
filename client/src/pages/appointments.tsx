@@ -57,6 +57,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type ExtendedAppointment = SelectAppointment & {
   patient?: { name: string };
@@ -396,6 +397,10 @@ export default function Appointments() {
                 )}
               </div>
               <div className="space-y-2">
+                <StatusBadge 
+                  status={appointment.status} 
+                  className="w-[140px] justify-center"
+                />
                 <Select
                   defaultValue={appointment.status}
                   onValueChange={(value) =>
@@ -409,7 +414,7 @@ export default function Appointments() {
                     <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="confirmed">Confirmed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">
