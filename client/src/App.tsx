@@ -11,7 +11,6 @@ import PatientDetails from "@/pages/patient-details";
 import Doctors from "@/pages/doctors";
 import CarePlans from "@/pages/care-plans";
 import GeneticProfiles from "@/pages/genetic-profiles";
-import DocumentTranslation from "@/pages/document-translation";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/ui/layout";
 
@@ -27,7 +26,6 @@ function Router() {
         <Route path="/doctors" component={Doctors} />
         <Route path="/care-plans" component={CarePlans} />
         <Route path="/genetic-profiles" component={GeneticProfiles} />
-        <Route path="/document-translation" component={DocumentTranslation} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
