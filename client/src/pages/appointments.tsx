@@ -405,7 +405,6 @@ export default function Appointments() {
                   value={appointment.status}
                   onValueChange={async (value) => {
                     try {
-                      console.log('Attempting to update status:', { id: appointment.id, status: value }); // Debug log
                       await updateAppointmentStatus({ 
                         id: appointment.id, 
                         status: value 
@@ -416,7 +415,6 @@ export default function Appointments() {
                         description: `Status updated to ${value}`,
                       });
                     } catch (error: any) {
-                      console.error('Status update failed:', error); // Debug log
                       toast({
                         title: "Error",
                         description: error.message || "Failed to update status",
