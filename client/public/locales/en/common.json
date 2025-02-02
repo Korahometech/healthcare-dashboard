@@ -7,6 +7,20 @@
     "doctors": "Doctors",
     "documents": "Document Translation"
   },
+  "welcome": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening"
+    },
+    "title": "Welcome back, {{name}}",
+    "role": {
+      "doctor": "Your upcoming appointments and patient records are ready for review.",
+      "patient": "Track your appointments and health records all in one place.",
+      "admin": "Monitor system activities and manage healthcare operations.",
+      "default": "Access your healthcare information and services."
+    }
+  },
   "actions": {
     "login": "Login",
     "logout": "Logout",

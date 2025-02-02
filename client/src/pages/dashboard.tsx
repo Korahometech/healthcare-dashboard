@@ -4,6 +4,7 @@ import { usePatients } from "@/hooks/use-patients";
 import { Users, Calendar, CheckCircle, XCircle, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
+import { WelcomeScreen } from "@/components/welcome-screen";
 import {
   Select,
   SelectContent,
@@ -166,6 +167,8 @@ function Dashboard() {
         transition={{ duration: 0.3 }}
         className="space-y-6"
       >
+        <WelcomeScreen />
+
         <div className="flex justify-between items-center">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
