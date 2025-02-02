@@ -20,8 +20,6 @@ export function useAppointments() {
       if (!response.ok) throw new Error("Failed to fetch appointments");
       return response.json();
     },
-    staleTime: 0, // Always fetch fresh data
-    cacheTime: 0, // Don't cache the data
   });
 
   const updateAppointmentStatusMutation = useMutation({
@@ -35,13 +33,10 @@ export function useAppointments() {
       return response.json();
     },
     onMutate: async ({ id, status }) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
 
-      // Snapshot the previous value
       const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
 
-      // Optimistically update to the new value
       if (previousAppointments) {
         queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], old => {
           if (!old) return previousAppointments;
@@ -54,13 +49,11 @@ export function useAppointments() {
       return { previousAppointments };
     },
     onError: (err, variables, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousAppointments) {
         queryClient.setQueryData(["/api/appointments"], context.previousAppointments);
       }
     },
     onSettled: () => {
-      // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });
@@ -74,13 +67,6 @@ export function useAppointments() {
     if (!response.ok) throw new Error("Failed to create appointment");
 
     const newAppointment = await response.json();
-    // Immediately update the cache with optimistic data
-    queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], old => {
-      if (!old) return [newAppointment];
-      return [...old, newAppointment];
-    });
-
-    // Force a refetch to ensure data consistency
     queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     return newAppointment;
   };
@@ -91,13 +77,6 @@ export function useAppointments() {
     });
     if (!response.ok) throw new Error("Failed to delete appointment");
 
-    // Immediately update the cache
-    queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], old => {
-      if (!old) return [];
-      return old.filter(appointment => appointment.id !== id);
-    });
-
-    // Force a refetch to ensure data consistency
     queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     return response.json();
   };
