@@ -113,6 +113,16 @@ export default function Appointments() {
 
   const handleReschedule = async (appointmentId: number, newDate: Date, reason: string) => {
     try {
+      // Validate the new date is not in the past
+      if (newDate < new Date()) {
+        toast({
+          title: "Invalid Date",
+          description: "Cannot reschedule to a past date",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await updateAppointment({
         id: appointmentId,
         date: newDate,
@@ -120,14 +130,19 @@ export default function Appointments() {
         status: 'rescheduled'
       });
 
+      setRescheduleAppointment(null);
+
       toast({
         title: "Appointment Rescheduled",
         description: "The appointment has been successfully rescheduled.",
       });
+
+      // Refetch appointments to update the list
+      appointments.refetch();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to reschedule appointment",
         variant: "destructive",
       });
     }

@@ -504,10 +504,10 @@ export function registerRoutes(app: Express): Server {
 
   /**
    * @swagger
-   * /api/appointments/{id}/status:
+   * /api/appointments/{id}:
    *   put:
-   *     summary: Update appointment status
-   *     description: Update the status of an existing appointment
+   *     summary: Update appointment
+   *     description: Update an existing appointment (including rescheduling)
    *     tags: [Appointments]
    *     parameters:
    *       - in: path
@@ -515,35 +515,86 @@ export function registerRoutes(app: Express): Server {
    *         required: true
    *         schema:
    *           type: integer
-   *         description: Appointment ID
    *     requestBody:
    *       required: true
    *       content:
    *         application/json:
    *           schema:
    *             type: object
-   *             required:
-   *               - status
    *             properties:
+   *               date:
+   *                 type: string
+   *                 format: date-time
    *               status:
    *                 type: string
-   *                 enum: [scheduled, confirmed, cancelled]
+   *               reschedulingReason:
+   *                 type: string
    *     responses:
    *       200:
    *         description: Updated appointment
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Appointment'
    */
-  app.put("/api/appointments/:id/status", async (req, res) => {
-    const { status } = req.body;
-    const appointment = await db
-      .update(appointments)
-      .set({ status })
-      .where(eq(appointments.id, parseInt(req.params.id)))
-      .returning();
-    res.json(appointment[0]);
+  app.put("/api/appointments/:id", async (req, res) => {
+    try {
+      const appointmentId = parseInt(req.params.id);
+      const { date, status, reschedulingReason } = req.body;
+
+      // Validate the new date
+      const newDate = new Date(date);
+      if (isNaN(newDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid appointment date' });
+      }
+
+      // Check if the appointment exists
+      const existingAppointment = await db.query.appointments.findFirst({
+        where: eq(appointments.id, appointmentId),
+        with: {
+          patient: true,
+          doctor: true
+        }
+      });
+
+      if (!existingAppointment) {
+        return res.status(404).json({ error: 'Appointment not found' });
+      }
+
+      // Update the appointment
+      const [updatedAppointment] = await db
+        .update(appointments)
+        .set({
+          date: newDate,
+          status,
+          reschedulingReason,
+          updatedAt: new Date()
+        })
+        .where(eq(appointments.id, appointmentId))
+        .returning();
+
+      // Send email notifications
+      if (existingAppointment.patient && existingAppointment.doctor) {
+        const emailData = generateAppointmentEmail({
+          date: newDate,
+          patient: existingAppointment.patient,
+          doctor: existingAppointment.doctor,
+          notes: `Appointment rescheduled. Reason: ${reschedulingReason}`,
+          isRescheduled: true
+        });
+
+        Promise.all([
+          sendEmail(emailData.patient),
+          sendEmail(emailData.doctor)
+        ]).catch((error) => {
+          console.error('Error sending rescheduling notification emails:', error);
+        });
+      }
+
+      res.json(updatedAppointment);
+    } catch (error: any) {
+      console.error('Error updating appointment:', error);
+      res.status(500).json({
+        error: 'Failed to update appointment',
+        details: error.message
+      });
+    }
   });
 
   /**
