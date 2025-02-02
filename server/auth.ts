@@ -93,7 +93,7 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      // Create user data with required fields only
+      // Create user data with required fields
       const userData = {
         username: req.body.username,
         password: req.body.password,

@@ -146,8 +146,6 @@ export const documentTranslations = pgTable("document_translations", {
   updatedAt: timestamp("updated_at"),
 });
 
-// Add before export section, after the existing tables
-
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
