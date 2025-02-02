@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 type CreateAppointmentInput = InsertAppointment & {
   isTeleconsultation?: boolean;
@@ -22,12 +23,7 @@ export function useAppointments() {
 
   const createAppointment = useMutation({
     mutationFn: async (appointment: CreateAppointmentInput) => {
-      const res = await fetch("/api/appointments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(appointment),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const res = await apiRequest("POST", "/api/appointments", appointment);
       return res.json();
     },
     onSuccess: () => {
@@ -43,12 +39,7 @@ export function useAppointments() {
       id: number;
       status: string;
     }) => {
-      const res = await fetch(`/api/appointments/${id}/status`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const res = await apiRequest("PUT", `/api/appointments/${id}/status`, { status });
       return res.json();
     },
     onMutate: async ({ id, status }) => {
@@ -78,12 +69,7 @@ export function useAppointments() {
 
   const updateAppointment = useMutation({
     mutationFn: async (appointment: UpdateAppointmentInput) => {
-      const res = await fetch(`/api/appointments/${appointment.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(appointment),
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const res = await apiRequest("PUT", `/api/appointments/${appointment.id}`, appointment);
       return res.json();
     },
     onSuccess: () => {
@@ -93,10 +79,7 @@ export function useAppointments() {
 
   const deleteAppointment = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/appointments/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error(await res.text());
+      const res = await apiRequest("DELETE", `/api/appointments/${id}`);
       return id;
     },
     onMutate: async (deletedId) => {
