@@ -76,6 +76,7 @@ export function OnboardingTour() {
       setCurrentStep(currentStep + 1);
     } else {
       setIsVisible(false);
+      localStorage.setItem('tourCompleted', 'true');
     }
   };
 
@@ -87,6 +88,7 @@ export function OnboardingTour() {
 
   const handleSkip = () => {
     setIsVisible(false);
+    localStorage.setItem('tourCompleted', 'true');
   };
 
   if (!isVisible) return null;
@@ -114,7 +116,7 @@ export function OnboardingTour() {
             />
           </motion.div>
         )}
-        
+
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -131,7 +133,7 @@ export function OnboardingTour() {
             >
               <X className="h-4 w-4" />
             </Button>
-            
+
             <motion.div
               key={currentStep}
               initial={{ opacity: 0, x: 20 }}
@@ -142,7 +144,7 @@ export function OnboardingTour() {
               <div className="flex justify-center">
                 {tourSteps[currentStep].icon}
               </div>
-              
+
               <div className="text-center space-y-2">
                 <h2 className="text-2xl font-semibold">
                   {tourSteps[currentStep].title}
