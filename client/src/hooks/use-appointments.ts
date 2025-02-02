@@ -76,36 +76,26 @@ export function useAppointments() {
       const res = await fetch(`/api/appointments/${id}`, {
         method: "DELETE",
       });
-
-      if (!res.ok) {
-        const error = await res.text();
-        throw new Error(error || "Failed to delete appointment");
-      }
-
+      if (!res.ok) throw new Error(await res.text());
       return id;
     },
     onMutate: async (deletedId) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
-
-      // Snapshot the previous value
       const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
 
-      // Optimistically update to the new value
       queryClient.setQueryData<SelectAppointment[]>(
         ["/api/appointments"],
         (old = []) => old.filter(appointment => appointment.id !== deletedId)
       );
 
-      // Return a context object with the snapshotted value
       return { previousAppointments };
     },
-    onError: (err, deletedId, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      queryClient.setQueryData(["/api/appointments"], context?.previousAppointments);
+    onError: (_, __, context) => {
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(["/api/appointments"], context.previousAppointments);
+      }
     },
     onSettled: () => {
-      // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });

@@ -150,8 +150,6 @@ export default function Appointments() {
         title: "Success",
         description: "Appointment deleted successfully",
       });
-      // Force a refetch of appointments
-      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     } catch (error: any) {
       toast({
         title: "Error",
