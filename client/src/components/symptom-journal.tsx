@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { useMood } from "@/hooks/use-mood";
+import { moodTransitionClasses } from "@/lib/mood-transition";
 import {
   Select,
   SelectContent,
@@ -18,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, AlertTriangle, ThumbsUp, Frown, Smile } from "lucide-react";
 
 interface Props {
   patientId: number;
@@ -32,6 +34,7 @@ export function SymptomJournal({ patientId }: Props) {
   const [severity, setSeverity] = useState<number>(1);
   const [mood, setMood] = useState<string>("neutral");
   const [notes, setNotes] = useState("");
+  const { moodColors } = useMood();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,13 +60,35 @@ export function SymptomJournal({ patientId }: Props) {
     }
   };
 
+  const getSeverityColor = (level: number) => {
+    if (level >= 8) return "text-red-500";
+    if (level >= 5) return "text-amber-500";
+    return "text-green-500";
+  };
+
+  const getMoodIcon = (moodType: string) => {
+    switch (moodType) {
+      case "happy":
+        return <Smile className="h-5 w-5 text-green-500" />;
+      case "sad":
+        return <Frown className="h-5 w-5 text-blue-500" />;
+      case "anxious":
+        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      default:
+        return <ThumbsUp className="h-5 w-5 text-gray-500" />;
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Symptom Journal</h2>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className={moodTransitionClasses.base} style={{
+              backgroundColor: moodColors.primary,
+              color: moodColors.background,
+            }}>
               <Plus className="mr-2 h-4 w-4" />
               New Entry
             </Button>
@@ -80,8 +105,13 @@ export function SymptomJournal({ patientId }: Props) {
                     value={currentSymptom}
                     onChange={(e) => setCurrentSymptom(e.target.value)}
                     placeholder="Enter symptom"
+                    className="flex-1"
                   />
-                  <Button type="button" onClick={addSymptom}>
+                  <Button 
+                    type="button" 
+                    onClick={addSymptom}
+                    variant="secondary"
+                  >
                     Add
                   </Button>
                 </div>
@@ -90,7 +120,7 @@ export function SymptomJournal({ patientId }: Props) {
                     {symptoms.map((symptom, index) => (
                       <span
                         key={index}
-                        className="bg-secondary text-secondary-foreground px-2 py-1 rounded"
+                        className="bg-secondary text-secondary-foreground px-3 py-1 rounded-full text-sm"
                       >
                         {symptom}
                       </span>
@@ -105,7 +135,7 @@ export function SymptomJournal({ patientId }: Props) {
                   value={severity.toString()}
                   onValueChange={(value) => setSeverity(parseInt(value))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={getSeverityColor(severity)}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -140,6 +170,7 @@ export function SymptomJournal({ patientId }: Props) {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add any additional notes or context"
+                  className="h-24"
                 />
               </div>
 
@@ -153,26 +184,49 @@ export function SymptomJournal({ patientId }: Props) {
 
       <div className="space-y-4">
         {journals.map((journal) => (
-          <Card key={journal.id} className="p-6">
+          <Card 
+            key={journal.id} 
+            className={`p-6 transform transition-all duration-300 hover:shadow-lg ${moodTransitionClasses.base}`}
+            style={{
+              borderColor: moodColors.primary + "40",
+              background: `linear-gradient(135deg, ${moodColors.background}, ${moodColors.background})`
+            }}
+          >
             <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-semibold">
-                  {new Date(journal.dateRecorded).toLocaleDateString()}
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  {new Date(journal.dateRecorded!).toLocaleDateString()}
+                  {getMoodIcon(journal.mood)}
                 </h3>
                 <div className="mt-2 space-y-2">
-                  <p>
-                    <strong>Symptoms:</strong>{" "}
-                    {journal.symptoms.join(", ")}
+                  <p className="flex items-center gap-2">
+                    <strong>Symptoms:</strong>
+                    <div className="flex flex-wrap gap-1">
+                      {journal.symptoms?.map((symptom, idx) => (
+                        <span
+                          key={idx}
+                          className="bg-secondary/50 text-secondary-foreground px-2 py-0.5 rounded-full text-sm"
+                        >
+                          {symptom}
+                        </span>
+                      ))}
+                    </div>
                   </p>
                   <p>
-                    <strong>Severity:</strong> {journal.severity}/10
+                    <strong>Severity:</strong>{" "}
+                    <span className={getSeverityColor(journal.severity)}>
+                      {journal.severity}/10
+                    </span>
                   </p>
                   <p>
                     <strong>Mood:</strong>{" "}
-                    <span className="capitalize">{journal.mood}</span>
+                    <span className="capitalize flex items-center gap-1">
+                      {getMoodIcon(journal.mood)}
+                      {journal.mood}
+                    </span>
                   </p>
                   {journal.notes && (
-                    <p>
+                    <p className="text-muted-foreground">
                       <strong>Notes:</strong> {journal.notes}
                     </p>
                   )}
@@ -183,23 +237,25 @@ export function SymptomJournal({ patientId }: Props) {
                 <div className="mt-4 border-t pt-4">
                   <h4 className="font-semibold mb-2">AI Analysis</h4>
                   <div className="space-y-2">
-                    <p>{journal.analysis[0].analysis}</p>
+                    <p className="text-muted-foreground">{journal.analysis[0].analysis}</p>
                     <div>
                       <strong>Sentiment:</strong>{" "}
                       <span className="capitalize">
                         {journal.analysis[0].sentiment}
                       </span>
                     </div>
-                    <div>
-                      <strong>Suggested Actions:</strong>
-                      <ul className="list-disc list-inside ml-4">
-                        {journal.analysis[0].suggestedActions.map(
-                          (action, index) => (
-                            <li key={index}>{action}</li>
-                          )
-                        )}
-                      </ul>
-                    </div>
+                    {journal.analysis[0].suggestedActions && (
+                      <div>
+                        <strong>Suggested Actions:</strong>
+                        <ul className="list-disc list-inside ml-4 text-muted-foreground">
+                          {journal.analysis[0].suggestedActions.map(
+                            (action, index) => (
+                              <li key={index}>{action}</li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
