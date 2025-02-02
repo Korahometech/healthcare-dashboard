@@ -21,50 +21,15 @@ import {
   doctors,
   specialties,
   symptomJournals,
-  symptomAnalysis,
-  medicalDocuments
+  symptomAnalysis
 } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import { sendEmail, generateAppointmentEmail } from "./lib/email";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import OpenAI from "openai";
-import multer from "multer";
-import path from "path";
-import { v4 as uuidv4 } from "uuid";
 
 const openai = new OpenAI();
-
-// Configure multer for file upload
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = uuidv4();
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error("Invalid file type. Only PDF and Word documents are allowed."));
-    }
-  },
-});
-
 
 export function registerRoutes(app: Express): Server {
   // Swagger UI route
@@ -289,105 +254,21 @@ export function registerRoutes(app: Express): Server {
    *       500:
    *         description: Server error
    */
-    app.delete("/api/patients/:id", async (req, res) => {
+  app.delete("/api/patients/:id", async (req, res) => {
     try {
       const patientId = parseInt(req.params.id);
 
       await db.transaction(async (tx) => {
-        // Delete document translations first
-       
+        await tx.delete(appointments).where(eq(appointments.patientId, patientId));
+        await tx.delete(labResults).where(eq(labResults.patientId, patientId));
+        await tx.delete(carePlans).where(eq(carePlans.patientId, patientId));
+        await tx.delete(geneticProfiles).where(eq(geneticProfiles.patientId, patientId));
+        await tx.delete(biomarkerData).where(eq(biomarkerData.patientId, patientId));
+        await tx.delete(treatmentResponses).where(eq(treatmentResponses.patientId, patientId));
+        await tx.delete(environmentalFactors).where(eq(environmentalFactors.patientId, patientId));
+        await tx.delete(riskAssessments).where(eq(riskAssessments.patientId, patientId));
 
-        // Delete medical documents
-        await tx.delete(medicalDocuments)
-          .where(eq(medicalDocuments.patientId, patientId));
-
-        // Delete symptom analysis records
-        await tx.delete(symptomAnalysis)
-          .where(
-            eq(
-              symptomAnalysis.journalId,
-              db.select({ id: symptomJournals.id })
-                .from(symptomJournals)
-                .where(eq(symptomJournals.patientId, patientId))
-            )
-          );
-
-        // Delete symptom journals
-        await tx.delete(symptomJournals)
-          .where(eq(symptomJournals.patientId, patientId));
-
-        // Delete appointments and related teleconsultations
-        const appointmentIds = await tx.select({ id: appointments.id })
-          .from(appointments)
-          .where(eq(appointments.patientId, patientId));
-
-        for (const { id } of appointmentIds) {
-          await tx.delete(teleconsultations)
-            .where(eq(teleconsultations.appointmentId, id));
-        }
-        await tx.delete(appointments)
-          .where(eq(appointments.patientId, patientId));
-
-        // Delete lab results
-        await tx.delete(labResults)
-          .where(eq(labResults.patientId, patientId));
-
-        // Delete risk assessments
-        await tx.delete(riskAssessments)
-          .where(eq(riskAssessments.patientId, patientId));
-
-        // Delete biomarker data
-        await tx.delete(biomarkerData)
-          .where(eq(biomarkerData.patientId, patientId));
-
-        // Delete environmental factors
-        await tx.delete(environmentalFactors)
-          .where(eq(environmentalFactors.patientId, patientId));
-
-        // Delete treatment responses
-        await tx.delete(treatmentResponses)
-          .where(eq(treatmentResponses.patientId, patientId));
-
-        // Delete genetic profiles
-        await tx.delete(geneticProfiles)
-          .where(eq(geneticProfiles.patientId, patientId));
-
-        // Delete care plans and related records
-        const carePlanIds = await tx.select({ id: carePlans.id })
-          .from(carePlans)
-          .where(eq(carePlans.patientId, patientId));
-
-        for (const { id } of carePlanIds) {
-          // Delete progress entries for health goals
-          const healthGoalIds = await tx.select({ id: healthGoals.id })
-            .from(healthGoals)
-            .where(eq(healthGoals.carePlanId, id));
-
-          for (const { id: goalId } of healthGoalIds) {
-            await tx.delete(progressEntries)
-              .where(eq(progressEntries.healthGoalId, goalId));
-          }
-
-          // Delete health goals
-          await tx.delete(healthGoals)
-            .where(eq(healthGoals.carePlanId, id));
-
-          // Delete treatments
-          await tx.delete(treatments)
-            .where(eq(treatments.carePlanId, id));
-
-          // Delete medications
-          await tx.delete(medications)
-            .where(eq(medications.carePlanId, id));
-        }
-
-        // Delete care plans
-        await tx.delete(carePlans)
-          .where(eq(carePlans.patientId, patientId));
-
-        // Finally delete the patient
-        await tx.delete(patients)
-          .where(eq(patients.id, patientId));
+        await tx.delete(patients).where(eq(patients.id, patientId));
       });
 
       res.json({ success: true, message: 'Patient and related records deleted successfully' });
@@ -597,10 +478,10 @@ export function registerRoutes(app: Express): Server {
 
   /**
    * @swagger
-   * /api/appointments/{id}:
+   * /api/appointments/{id}/status:
    *   put:
-   *     summary: Update appointment details
-   *     description: Update an existing appointment including rescheduling
+   *     summary: Update appointment status
+   *     description: Update the status of an existing appointment
    *     tags: [Appointments]
    *     parameters:
    *       - in: path
@@ -615,15 +496,12 @@ export function registerRoutes(app: Express): Server {
    *         application/json:
    *           schema:
    *             type: object
+   *             required:
+   *               - status
    *             properties:
-   *               date:
-   *                 type: string
-   *                 format: date-time
    *               status:
    *                 type: string
-   *                 enum: [scheduled, confirmed, cancelled, rescheduled]
-   *               reschedulingReason:
-   *                 type: string
+   *                 enum: [scheduled, confirmed, cancelled]
    *     responses:
    *       200:
    *         description: Updated appointment
@@ -632,74 +510,14 @@ export function registerRoutes(app: Express): Server {
    *             schema:
    *               $ref: '#/components/schemas/Appointment'
    */
-  app.put("/api/appointments/:id", async (req, res) => {
-    try {
-      const appointmentId = parseInt(req.params.id);
-      const { date, status, reschedulingReason } = req.body;
-
-      const [updatedAppointment] = await db.transaction(async (tx) => {
-        const [appointment] = await tx
-          .update(appointments)
-          .set({
-            date: date ? new Date(date) : undefined,
-            status,
-            notes: reschedulingReason 
-              ? `Rescheduled: ${reschedulingReason}`
-              : undefined,
-          })
-          .where(eq(appointments.id, appointmentId))
-          .returning();
-
-        if (appointment.teleconsultation) {
-          await tx
-            .update(teleconsultations)
-            .set({
-              startTime: date ? new Date(date) : undefined,
-              status: status,
-            })
-            .where(eq(teleconsultations.appointmentId, appointmentId));
-        }
-
-        return [appointment];
-      });
-
-      const appointmentWithDetails = await db.query.appointments.findFirst({
-        where: eq(appointments.id, appointmentId),
-        with: {
-          patient: true,
-          doctor: true,
-          teleconsultation: true,
-        },
-      });
-
-      // Send email notifications about the rescheduling
-      if (appointmentWithDetails?.patient && appointmentWithDetails.doctor) {
-        const emailData = generateAppointmentEmail({
-          date: appointmentWithDetails.date,
-          patient: appointmentWithDetails.patient,
-          doctor: appointmentWithDetails.doctor,
-          notes: appointmentWithDetails.notes || undefined,
-          isTeleconsultation: !!appointmentWithDetails.teleconsultation,
-          meetingUrl: appointmentWithDetails.teleconsultation?.meetingUrl,
-          isRescheduled: true
-        });
-
-        Promise.all([
-          sendEmail(emailData.patient),
-          sendEmail(emailData.doctor),
-        ]).catch((error) => {
-          console.error('Error sending rescheduling notification emails:', error);
-        });
-      }
-
-      res.json(appointmentWithDetails);
-    } catch (error: any) {
-      console.error('Error updating appointment:', error);
-      res.status(500).json({
-        error: 'Failed to update appointment',
-        details: error.message
-      });
-    }
+  app.put("/api/appointments/:id/status", async (req, res) => {
+    const { status } = req.body;
+    const appointment = await db
+      .update(appointments)
+      .set({ status })
+      .where(eq(appointments.id, parseInt(req.params.id)))
+      .returning();
+    res.json(appointment[0]);
   });
 
   /**
@@ -867,7 +685,45 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
-  
+  /**
+   * @swagger
+   * /api/patients/{patientId}/symptom-journals:
+   *   post:
+   *     summary: Create a symptom journal entry with AI analysis
+   *     tags: [Symptoms]
+   *     parameters:
+   *       - in: path
+   *         name: patientId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - symptoms
+   *               - severity
+   *               - mood
+   *             properties:
+   *               symptoms:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   *               severity:
+   *                 type: integer
+   *                 minimum: 1
+   *                 maximum: 10
+   *               mood:
+   *                 type: string
+   *               notes:
+   *                 type: string
+   *     responses:
+   *       201:
+   *         description: Journal entry created with AI analysis
+   */
   app.post("/api/patients/:patientId/symptom-journals", async (req, res) => {
     try {
       const patientId = parseInt(req.params.patientId);
@@ -881,8 +737,61 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
+      // Get patient's history for context
+      const patientHistory = await db.query.symptomJournals.findMany({
+        where: eq(symptomJournals.patientId, patientId),
+        orderBy: [desc(symptomJournals.dateRecorded)],
+        limit: 5,
+      });
+
+      // Generate AI analysis
+      const prompt = {
+        role: "system",
+        content: "You are a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
+      };
+
+      const userMessage = {
+        role: "user",
+        content: `
+Current Entry:
+Symptoms: ${req.body.symptoms.join(", ")}
+Severity: ${req.body.severity}
+Mood: ${req.body.mood}
+Notes: ${req.body.notes || "None"}
+
+Recent History:
+${patientHistory.map(h => `
+Date: ${h.dateRecorded}
+Symptoms: ${h.symptoms.join(", ")}
+Severity: ${h.severity}
+Mood: ${h.mood}
+`).join("\n")}
+`
+      };
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [prompt, userMessage],
+        response_format: { type: "json_object" },
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content);
+
+      // Save AI analysis
+      const [savedAnalysis] = await db
+        .insert(symptomAnalysis)
+        .values({
+          journalId: journal.id,
+          analysis: analysis.analysis,
+          sentiment: analysis.sentiment,
+          suggestedActions: analysis.suggestedActions,
+          aiConfidence: analysis.confidence,
+        })
+        .returning();
+
       res.status(201).json({
-        journal
+        journal,
+        analysis: savedAnalysis,
       });
     } catch (error: any) {
       console.error("Error creating symptom journal:", error);
@@ -897,7 +806,7 @@ export function registerRoutes(app: Express): Server {
    * @swagger
    * /api/patients/{patientId}/symptom-journals:
    *   get:
-   *     summary: Get patient's symptom journal entries
+   *     summary: Get patient's symptom journal entries with analysis
    *     tags: [Symptoms]
    *     parameters:
    *       - in: path
@@ -907,13 +816,16 @@ export function registerRoutes(app: Express): Server {
    *           type: integer
    *     responses:
    *       200:
-   *         description: List of journal entries
+   *         description: List of journal entries with analysis
    */
   app.get("/api/patients/:patientId/symptom-journals", async (req, res) => {
     try {
       const journals = await db.query.symptomJournals.findMany({
         where: eq(symptomJournals.patientId, parseInt(req.params.patientId)),
         orderBy: [desc(symptomJournals.dateRecorded)],
+        with: {
+          analysis: true,
+        },
       });
       res.json(journals);
     } catch (error: any) {
@@ -925,53 +837,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post(
-    "/api/medical-documents/upload",
-    upload.single("file"),
-    async (req, res) => {
-      try {
-        if (!req.file) {
-          return res.status(400).json({ error: "No file uploaded" });
-        }
-  
-        const [document] = await db
-          .insert(medicalDocuments)
-          .values({
-            fileName: req.file.originalname,
-            fileType: req.file.mimetype,
-            fileSize: req.file.size,
-            secureUrl: req.file.path,
-            status: "completed",
-          })
-          .returning();
-  
-        res.status(201).json(document);
-      } catch (error: any) {
-        console.error("Error uploading medical document:", error);
-        res.status(500).json({
-          error: "Failed to upload document",
-          details: error.message,
-        });
-      }
-    }
-  );
-  
-  app.get("/api/medical-documents", async (req, res) => {
-    try {
-      const documents = await db.query.medicalDocuments.findMany({
-        orderBy: [desc(medicalDocuments.createdAt)],
-      });
-      res.json(documents);
-    } catch (error: any) {
-      console.error("Error fetching medical documents:", error);
-      res.status(500).json({
-        error: "Failed to fetch documents",
-        details: error.message,
-      });
-    }
-  });
-  
-  
 
   const httpServer = createServer(app);
     return httpServer;

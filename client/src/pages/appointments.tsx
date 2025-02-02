@@ -5,7 +5,7 @@ import { useDoctors } from "@/hooks/use-doctors";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Video, Plus, Clock, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, Video, Plus, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,18 +45,8 @@ import { insertAppointmentSchema } from "@db/schema";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
 import { RescheduleDialog } from "@/components/appointments/reschedule-dialog";
 import { z } from "zod";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
+// Extended appointment type to include all properties we're using
 type ExtendedAppointment = SelectAppointment & {
   patient?: { name: string };
   duration?: number;
@@ -64,6 +54,7 @@ type ExtendedAppointment = SelectAppointment & {
   meetingUrl?: string;
 };
 
+// Simplified appointment schema
 const createAppointmentSchema = insertAppointmentSchema.extend({
   doctorId: z.number(),
   duration: z.number().default(30),
@@ -83,7 +74,7 @@ const DURATIONS = [
 export default function Appointments() {
   const [open, setOpen] = useState(false);
   const [rescheduleAppointment, setRescheduleAppointment] = useState<ExtendedAppointment | null>(null);
-  const { appointments, createAppointment, updateStatus, updateAppointment, deleteAppointment } = useAppointments();
+  const { appointments, createAppointment, updateStatus, updateAppointment } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
@@ -395,59 +386,15 @@ export default function Appointments() {
                     <SelectItem value="rescheduled">Rescheduled</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setRescheduleAppointment(appointment)}
-                  >
-                    <Clock className="mr-2 h-4 w-4" />
-                    Reschedule
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="px-2"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Appointment</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete this appointment? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={async () => {
-                            try {
-                              await deleteAppointment(appointment.id);
-                              toast({
-                                title: "Appointment deleted",
-                                description: "The appointment has been successfully deleted.",
-                              });
-                            } catch (error: any) {
-                              toast({
-                                title: "Error",
-                                description: error.message,
-                                variant: "destructive",
-                              });
-                            }
-                          }}
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setRescheduleAppointment(appointment)}
+                >
+                  <Clock className="mr-2 h-4 w-4" />
+                  Reschedule
+                </Button>
               </div>
             </div>
 

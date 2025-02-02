@@ -157,12 +157,12 @@ export function SymptomJournal({ patientId }: Props) {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-semibold">
-                  {new Date(journal.dateRecorded!).toLocaleDateString()}
+                  {new Date(journal.dateRecorded).toLocaleDateString()}
                 </h3>
                 <div className="mt-2 space-y-2">
                   <p>
                     <strong>Symptoms:</strong>{" "}
-                    {journal.symptoms?.join(", ") || "None recorded"}
+                    {journal.symptoms.join(", ")}
                   </p>
                   <p>
                     <strong>Severity:</strong> {journal.severity}/10
@@ -178,6 +178,31 @@ export function SymptomJournal({ patientId }: Props) {
                   )}
                 </div>
               </div>
+
+              {journal.analysis?.[0] && (
+                <div className="mt-4 border-t pt-4">
+                  <h4 className="font-semibold mb-2">AI Analysis</h4>
+                  <div className="space-y-2">
+                    <p>{journal.analysis[0].analysis}</p>
+                    <div>
+                      <strong>Sentiment:</strong>{" "}
+                      <span className="capitalize">
+                        {journal.analysis[0].sentiment}
+                      </span>
+                    </div>
+                    <div>
+                      <strong>Suggested Actions:</strong>
+                      <ul className="list-disc list-inside ml-4">
+                        {journal.analysis[0].suggestedActions.map(
+                          (action, index) => (
+                            <li key={index}>{action}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
         ))}

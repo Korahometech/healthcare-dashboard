@@ -79,7 +79,6 @@ export const symptomAnalysis = pgTable("symptom_analysis", {
   sentiment: text("sentiment"),
   suggestedActions: text("suggested_actions").array(),
   aiConfidence: numeric("ai_confidence"),
-  details: text("details"),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
