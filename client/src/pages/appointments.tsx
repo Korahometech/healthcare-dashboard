@@ -45,6 +45,7 @@ import { insertAppointmentSchema } from "@db/schema";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
 import { RescheduleDialog } from "@/components/appointments/reschedule-dialog";
 import { z } from "zod";
+import { SchedulingOptimizer } from "@/components/appointments/scheduling-optimizer";
 
 // Extended appointment type to include all properties we're using
 type ExtendedAppointment = SelectAppointment & {
@@ -78,6 +79,7 @@ export default function Appointments() {
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const form = useForm<CreateAppointmentInput>({
     resolver: zodResolver(createAppointmentSchema),
@@ -87,6 +89,13 @@ export default function Appointments() {
       isTeleconsultation: false,
     },
   });
+
+    const handleScheduleSelect = (date: Date) => {
+      setSelectedDate(date);
+      form.setValue("date", date);
+      setOpen(true);
+    };
+
 
   const isTeleconsultation = form.watch("isTeleconsultation");
 
@@ -360,6 +369,12 @@ export default function Appointments() {
           </DialogContent>
         </Dialog>
       </div>
+
+        <SchedulingOptimizer
+          appointments={appointments}
+          onSelectSlot={handleScheduleSelect}
+        />
+
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {(appointments as ExtendedAppointment[]).map((appointment) => (
