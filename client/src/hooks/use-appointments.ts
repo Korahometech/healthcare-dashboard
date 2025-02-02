@@ -107,7 +107,7 @@ export function useAppointments() {
     appointments,
     isLoading,
     createAppointment: createAppointment.mutateAsync,
-    updateStatus: updateAppointmentStatus.mutateAsync,
+    updateAppointmentStatus: updateAppointmentStatus.mutateAsync,
     updateAppointment: updateAppointment.mutateAsync,
     deleteAppointment: deleteAppointment.mutateAsync,
   };
