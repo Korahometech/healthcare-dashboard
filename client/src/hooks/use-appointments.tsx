@@ -20,6 +20,8 @@ export function useAppointments() {
       if (!response.ok) throw new Error("Failed to fetch appointments");
       return response.json();
     },
+    staleTime: 0, // Always fetch fresh data
+    cacheTime: 0, // Don't cache the data
   });
 
   const updateAppointmentStatusMutation = useMutation({
@@ -32,15 +34,33 @@ export function useAppointments() {
       if (!response.ok) throw new Error("Failed to update appointment status");
       return response.json();
     },
-    onSuccess: (updatedAppointment) => {
-      // Update the cache with the new appointment data
-      queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], (old) => {
-        if (!old) return [updatedAppointment];
-        return old.map((appointment) =>
-          appointment.id === updatedAppointment.id ? updatedAppointment : appointment
-        );
-      });
-      // Also invalidate to ensure fresh data
+    onMutate: async ({ id, status }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
+
+      // Snapshot the previous value
+      const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
+
+      // Optimistically update to the new value
+      if (previousAppointments) {
+        queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], old => {
+          if (!old) return previousAppointments;
+          return old.map(appointment =>
+            appointment.id === id ? { ...appointment, status } : appointment
+          );
+        });
+      }
+
+      return { previousAppointments };
+    },
+    onError: (err, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(["/api/appointments"], context.previousAppointments);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });
@@ -54,12 +74,13 @@ export function useAppointments() {
     if (!response.ok) throw new Error("Failed to create appointment");
 
     const newAppointment = await response.json();
-    // Update cache immediately
-    queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], (old) => {
+    // Immediately update the cache with optimistic data
+    queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], old => {
       if (!old) return [newAppointment];
       return [...old, newAppointment];
     });
-    // Also invalidate to ensure fresh data
+
+    // Force a refetch to ensure data consistency
     queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     return newAppointment;
   };
@@ -70,12 +91,13 @@ export function useAppointments() {
     });
     if (!response.ok) throw new Error("Failed to delete appointment");
 
-    // Update cache immediately
-    queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], (old) => {
+    // Immediately update the cache
+    queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], old => {
       if (!old) return [];
-      return old.filter((appointment) => appointment.id !== id);
+      return old.filter(appointment => appointment.id !== id);
     });
-    // Also invalidate to ensure fresh data
+
+    // Force a refetch to ensure data consistency
     queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     return response.json();
   };

@@ -1,3 +1,5 @@
+import { updateAppointmentStatus } from "@/lib/api";
+import { useState } from "react";
 import { StatsCard } from "@/components/ui/stats-card";
 import { useAppointments } from "@/hooks/use-appointments";
 import { usePatients } from "@/hooks/use-patients";
@@ -32,10 +34,10 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectAppointment } from "@db/schema";
 import { motion, AnimatePresence } from "framer-motion";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const COLORS = [
   'hsl(var(--primary))',
@@ -55,8 +57,40 @@ function Dashboard() {
   const { patients, isLoading: patientsLoading } = usePatients();
   const [timeRange, setTimeRange] = useState("6m");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { mutate: updateStatus } = useMutation({
+    mutationFn: updateAppointmentStatus
+  });
+
 
   const isLoading = appointmentsLoading || patientsLoading;
+
+
+    const handleStatusChange = async (appointmentId: number, newStatus: string) => {
+    try {
+      await updateStatus({ id: appointmentId, status: newStatus });
+  
+      // Immediately update local state
+      const updatedAppointments = appointments.map(appointment => 
+        appointment.id === appointmentId 
+          ? { ...appointment, status: newStatus }
+          : appointment
+      );
+  
+      queryClient.setQueryData(["/api/appointments"], updatedAppointments);
+  
+      toast({
+        title: "Success",
+        description: `Appointment status updated to ${newStatus}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update appointment status",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Calculate trending percentages
   const previousPeriodAppointments = appointments.filter(a => {
@@ -81,7 +115,7 @@ function Dashboard() {
     label: "vs last period"
   };
 
-  const confirmedAppointments = appointments.filter(
+    const confirmedAppointments = appointments.filter(
     (a) => a.status === "confirmed"
   ).length;
   const canceledAppointments = appointments.filter(
