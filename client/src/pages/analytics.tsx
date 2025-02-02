@@ -61,6 +61,11 @@ import {
 import { format } from 'date-fns';
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
 import { QuickActions, analyticsActions } from "@/components/ui/quick-actions";
+import {
+  CardSkeleton,
+  StatsCardSkeleton,
+  ChartSkeleton,
+} from "@/components/ui/skeleton";
 const COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--chart-2))',
@@ -152,11 +157,57 @@ export default function Analytics() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-sm text-muted-foreground">Loading analytics data...</p>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
+              Loading healthcare insights...
+            </p>
+          </div>
+          <Button variant="outline" className="gap-2" disabled>
+            <Download className="h-4 w-4" />
+            Export Analytics (PDF)
+          </Button>
         </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <StatsCardSkeleton key={i} />
+          ))}
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <Select disabled>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Loading specialties..." />
+            </SelectTrigger>
+          </Select>
+
+          <Select disabled>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Loading time ranges..." />
+            </SelectTrigger>
+          </Select>
+        </div>
+
+        <DashboardLayout defaultSizes={[60, 40]}>
+          <DashboardPanel>
+            <ChartSkeleton />
+          </DashboardPanel>
+          <DashboardPanel>
+            <ChartSkeleton />
+          </DashboardPanel>
+        </DashboardLayout>
+
+        <DashboardLayout defaultSizes={[50, 50]}>
+          <DashboardPanel>
+            <ChartSkeleton />
+          </DashboardPanel>
+          <DashboardPanel>
+            <ChartSkeleton />
+          </DashboardPanel>
+        </DashboardLayout>
       </div>
     );
   }
@@ -166,9 +217,9 @@ export default function Analytics() {
   const ageDistribution = calculateAgeDistribution(patients);
   const genderDistribution = calculateGenderDistribution(patients);
   const appointmentTrends = getAppointmentsByTimeRange(appointments, appointmentTimeRange);
-    const healthConditions = calculateHealthConditionsDistribution(patients);
-    const bmiDistribution = calculateBMIDistribution(patients);
-    const appointmentOptimization = {
+  const healthConditions = calculateHealthConditionsDistribution(patients);
+  const bmiDistribution = calculateBMIDistribution(patients);
+  const appointmentOptimization = {
     peakHours: [
       { hour: '9 AM', count: 12 },
       { hour: '10 AM', count: 25 },
@@ -195,9 +246,9 @@ export default function Analytics() {
     ],
     schedulingEfficiency: 85.5,
   }
-    const formatPercent = (value: number) => `${value.toFixed(1)}%`;
-    const formatCount = (value: number) => value.toLocaleString();
-    const formatDate = (date: string) => format(new Date(date), 'MMM d, yyyy');
+  const formatPercent = (value: number) => `${value.toFixed(1)}%`;
+  const formatCount = (value: number) => value.toLocaleString();
+  const formatDate = (date: string) => format(new Date(date), 'MMM d, yyyy');
 
   return (
     <TooltipProvider>
