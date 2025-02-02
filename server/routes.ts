@@ -21,7 +21,8 @@ import {
   doctors,
   specialties,
   symptomJournals,
-  symptomAnalysis
+  symptomAnalysis,
+  appointmentAnalytics
 } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import { sendEmail, generateAppointmentEmail } from "./lib/email";
@@ -31,6 +32,7 @@ import OpenAI from "openai";
 import multer from "multer";
 import path from "path";
 import { medicalDocuments, documentTranslations } from "@db/schema";
+import { format, parseISO, differenceInMinutes, getDay } from "date-fns";
 const openai = new OpenAI();
 
 const storage = multer.diskStorage({
@@ -591,6 +593,127 @@ export function registerRoutes(app: Express): Server {
     res.json(appointment[0]);
   });
 
+    /**
+   * @swagger
+   * /api/appointments/analytics/wait-time:
+   *   get:
+   *     summary: Get predicted wait time
+   *     description: Calculate predicted wait time based on historical data
+   *     tags: [Appointments]
+   *     parameters:
+   *       - in: query
+   *         name: doctorId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: query
+   *         name: scheduledTime
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: date-time
+   *     responses:
+   *       200:
+   *         description: Predicted wait time in minutes
+   */
+  app.get("/api/appointments/analytics/wait-time", async (req, res) => {
+    try {
+      const doctorId = parseInt(req.query.doctorId as string);
+      const scheduledTime = parseISO(req.query.scheduledTime as string);
+      const dayOfWeek = getDay(scheduledTime);
+      const timeSlot = getTimeSlot(scheduledTime);
+
+      // Get historical wait times for similar conditions
+      const historicalData = await db.query.appointmentAnalytics.findMany({
+        where: (analytics, { and, eq }) => and(
+          eq(analytics.doctorId, doctorId),
+          eq(analytics.dayOfWeek, dayOfWeek),
+          eq(analytics.timeSlot, timeSlot)
+        ),
+        orderBy: (analytics, { desc }) => [desc(analytics.createdAt)],
+        limit: 10,
+      });
+
+      // Calculate predicted wait time based on historical average
+      const waitTimes = historicalData
+        .filter(data => data.waitTime != null)
+        .map(data => data.waitTime as number);
+
+      const predictedWaitTime = waitTimes.length > 0
+        ? Math.round(waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length)
+        : 15; // Default prediction of 15 minutes if no historical data
+
+      res.json({ predictedWaitTime });
+    } catch (error: any) {
+      console.error('Error calculating wait time:', error);
+      res.status(500).json({
+        error: 'Failed to calculate wait time',
+        details: error.message
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/appointments/{id}/start:
+   *   post:
+   *     summary: Mark appointment as started
+   *     description: Record actual start time and calculate wait time
+   *     tags: [Appointments]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: Updated appointment and analytics
+   */
+  app.post("/api/appointments/:id/start", async (req, res) => {
+    try {
+      const appointmentId = parseInt(req.params.id);
+      const startTime = new Date();
+
+      const appointment = await db.query.appointments.findFirst({
+        where: eq(appointments.id, appointmentId),
+      });
+
+      if (!appointment) {
+        return res.status(404).json({ error: 'Appointment not found' });
+      }
+
+      // Calculate wait time
+      const waitTime = differenceInMinutes(startTime, appointment.date);
+
+      // Update appointment with actual start time
+      await db.update(appointments)
+        .set({ actualStartTime: startTime })
+        .where(eq(appointments.id, appointmentId));
+
+      // Create analytics record
+      const [analytics] = await db.insert(appointmentAnalytics)
+        .values({
+          appointmentId,
+          doctorId: appointment.doctorId,
+          scheduledTime: appointment.date,
+          actualStartTime: startTime,
+          waitTime,
+          dayOfWeek: getDay(appointment.date),
+          timeSlot: getTimeSlot(appointment.date),
+        })
+        .returning();
+
+      res.json({ appointment, analytics });
+    } catch (error: any) {
+      console.error('Error starting appointment:', error);
+      res.status(500).json({
+        error: 'Failed to start appointment',
+        details: error.message
+      });
+    }
+  });
+
   /**
    * @swagger
    * /api/risk-assessments:
@@ -868,7 +991,7 @@ export function registerRoutes(app: Express): Server {
       // Generate AI analysis
       const prompt = {
         role: "system",
-        content: "You are a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
+        content: "Youare a medical analysis assistant. Analyze the symptom journal entry and previous history to provide insights and suggestions. Include pattern analysis, potential triggers, and recommended actions. Respond in JSON format with fields: analysis (string), sentiment (positive/negative/neutral), suggestedActions (array of strings), confidence (number between 0 and 1)"
       };
 
       const userMessage = {
@@ -1200,6 +1323,12 @@ Mood: ${h.mood}
       });
     }
   });
+  function getTimeSlot(date: Date): string {
+    const hour = date.getHours();
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'evening';
+  }
   const httpServer = createServer(app);
     return httpServer;
 }

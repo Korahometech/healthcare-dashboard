@@ -567,3 +567,37 @@ export const insertSymptomAnalysisSchema = createInsertSchema(symptomAnalysis);
 export const selectSymptomAnalysisSchema = createSelectSchema(symptomAnalysis);
 export type InsertSymptomAnalysis = z.infer<typeof insertSymptomAnalysisSchema>;
 export type SelectSymptomAnalysis = z.infer<typeof selectSymptomAnalysisSchema>;
+
+
+// Add after the existing tables
+
+export const appointmentAnalytics = pgTable("appointment_analytics", {
+  id: serial("id").primaryKey(),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  doctorId: integer("doctor_id").references(() => doctors.id),
+  scheduledTime: timestamp("scheduled_time").notNull(),
+  actualStartTime: timestamp("actual_start_time"),
+  waitTime: integer("wait_time"), // in minutes
+  dayOfWeek: integer("day_of_week").notNull(),
+  timeSlot: text("time_slot").notNull(), // e.g., "morning", "afternoon", "evening"
+  predictedWaitTime: integer("predicted_wait_time"), // in minutes
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+});
+
+// Add to exports section
+export const appointmentAnalyticsRelations = relations(appointmentAnalytics, ({ one }) => ({
+  appointment: one(appointments, {
+    fields: [appointmentAnalytics.appointmentId],
+    references: [appointments.id],
+  }),
+  doctor: one(doctors, {
+    fields: [appointmentAnalytics.doctorId],
+    references: [doctors.id],
+  }),
+}));
+
+export const insertAppointmentAnalyticsSchema = createInsertSchema(appointmentAnalytics);
+export const selectAppointmentAnalyticsSchema = createSelectSchema(appointmentAnalytics);
+export type InsertAppointmentAnalytics = z.infer<typeof insertAppointmentAnalyticsSchema>;
+export type SelectAppointmentAnalytics = z.infer<typeof selectAppointmentAnalyticsSchema>;
