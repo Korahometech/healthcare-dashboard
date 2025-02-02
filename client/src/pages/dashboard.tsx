@@ -5,6 +5,7 @@ import { Users, Calendar, CheckCircle, XCircle, Download, Loader2 } from "lucide
 import { Button } from "@/components/ui/button";
 import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
 import { WelcomeScreen } from "@/components/welcome-screen";
+import { QuickActions } from "@/components/dashboard/quick-actions";
 import {
   Select,
   SelectContent,
@@ -168,6 +169,8 @@ function Dashboard() {
         className="space-y-6"
       >
         <WelcomeScreen name="Dr. Smith" role="doctor" />
+
+        <QuickActions />
 
         <div className="flex justify-between items-center">
           <motion.div
