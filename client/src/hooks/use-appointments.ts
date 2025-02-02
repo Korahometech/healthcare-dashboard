@@ -17,6 +17,7 @@ export function useAppointments() {
 
   const { data: appointments = [], isLoading } = useQuery<SelectAppointment[]>({
     queryKey: ["/api/appointments"],
+    staleTime: 0, // Ensure we always get fresh data
   });
 
   const createAppointment = useMutation({
@@ -81,14 +82,15 @@ export function useAppointments() {
         throw new Error(error || "Failed to delete appointment");
       }
 
-      // Handle both cases: JSON response or no content
-      const contentType = res.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        return res.json();
-      }
-      return null; // Return null for successful deletion with no content
+      // Return the ID of the deleted appointment
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
+      // Immediately update the cache to remove the deleted appointment
+      queryClient.setQueryData(["/api/appointments"], (old: SelectAppointment[] | undefined) => {
+        return old ? old.filter(appointment => appointment.id !== deletedId) : [];
+      });
+      // Then invalidate to refetch
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });
