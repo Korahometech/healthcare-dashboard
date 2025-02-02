@@ -56,6 +56,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ExtendedAppointment = SelectAppointment & {
   patient?: { name: string };
@@ -87,6 +88,7 @@ export default function Appointments() {
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const form = useForm<CreateAppointmentInput>({
     resolver: zodResolver(createAppointmentSchema),
@@ -148,6 +150,8 @@ export default function Appointments() {
         title: "Success",
         description: "Appointment deleted successfully",
       });
+      // Force a refetch of appointments
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     } catch (error: any) {
       toast({
         title: "Error",
