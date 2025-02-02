@@ -6,13 +6,15 @@ export const queryClient = new QueryClient({
       queryFn: async ({ queryKey }) => {
         const res = await fetch(queryKey[0] as string, {
           credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
         });
 
         if (!res.ok) {
           if (res.status >= 500) {
             throw new Error(`${res.status}: ${res.statusText}`);
           }
-
           throw new Error(`${res.status}: ${await res.text()}`);
         }
 
@@ -33,6 +35,9 @@ export function getQueryFn(options?: { on401?: "returnNull" | "throw" }) {
   return async ({ queryKey }: { queryKey: [string] }) => {
     const res = await fetch(queryKey[0], {
       credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
     if (!res.ok) {
