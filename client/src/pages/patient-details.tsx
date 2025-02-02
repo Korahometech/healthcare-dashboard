@@ -19,7 +19,7 @@ export default function PatientDetails() {
           {/* Tabs skeleton */}
           <div className="space-y-4">
             <div className="flex gap-2 border-b">
-              {Array.from({ length: 3 }).map((_, i) => (
+              {Array.from({ length: 2 }).map((_, i) => (
                 <div key={i} className="px-4 py-2">
                   <div className="h-4 w-24 bg-muted rounded animate-pulse" />
                 </div>
@@ -53,7 +53,6 @@ export default function PatientDetails() {
         <TabsList>
           <TabsTrigger value="symptom-journal">Symptom Journal</TabsTrigger>
           <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="appointments">Appointments</TabsTrigger>
         </TabsList>
 
         <TabsContent value="symptom-journal" className="space-y-4">
@@ -67,12 +66,6 @@ export default function PatientDetails() {
               <p>Email: {patient.email || "Not provided"}</p>
               <p>Phone: {patient.phone || "Not provided"}</p>
             </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="appointments">
-          <div className="text-center text-muted-foreground">
-            Coming soon...
           </div>
         </TabsContent>
       </Tabs>
