@@ -20,13 +20,13 @@ export function DashboardLayout({
   return (
     <ResizablePanelGroup
       direction="horizontal"
-      className={cn("min-h-[350px] rounded-lg", className)}
+      className={cn("min-h-[400px] rounded-lg", className)}
     >
       {children.map((child, index) => (
         <div key={`panel-group-${index}`}>
           <ResizablePanel
             defaultSize={defaultSizes[index]}
-            className="p-1.5"
+            className="p-2"
           >
             {child}
           </ResizablePanel>
@@ -47,7 +47,7 @@ export function DashboardPanel({
   className?: string;
 }) {
   return (
-    <Card className={cn("h-full overflow-auto p-3", className)}>
+    <Card className={cn("h-full overflow-auto p-4", className)}>
       {children}
     </Card>
   );

@@ -45,7 +45,6 @@ import { insertAppointmentSchema } from "@db/schema";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
 import { RescheduleDialog } from "@/components/appointments/reschedule-dialog";
 import { z } from "zod";
-import { SchedulingOptimizer } from "@/components/appointments/scheduling-optimizer";
 
 // Extended appointment type to include all properties we're using
 type ExtendedAppointment = SelectAppointment & {
@@ -75,11 +74,10 @@ const DURATIONS = [
 export default function Appointments() {
   const [open, setOpen] = useState(false);
   const [rescheduleAppointment, setRescheduleAppointment] = useState<ExtendedAppointment | null>(null);
-  const { appointments, refetch, createAppointment, updateStatus, updateAppointment } = useAppointments();
+  const { appointments, createAppointment, updateStatus, updateAppointment } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const form = useForm<CreateAppointmentInput>({
     resolver: zodResolver(createAppointmentSchema),
@@ -89,13 +87,6 @@ export default function Appointments() {
       isTeleconsultation: false,
     },
   });
-
-    const handleScheduleSelect = (date: Date) => {
-      setSelectedDate(date);
-      form.setValue("date", date);
-      setOpen(true);
-    };
-
 
   const isTeleconsultation = form.watch("isTeleconsultation");
 
@@ -122,16 +113,6 @@ export default function Appointments() {
 
   const handleReschedule = async (appointmentId: number, newDate: Date, reason: string) => {
     try {
-      // Validate the new date is not in the past
-      if (newDate < new Date()) {
-        toast({
-          title: "Invalid Date",
-          description: "Cannot reschedule to a past date",
-          variant: "destructive",
-        });
-        return;
-      }
-
       await updateAppointment({
         id: appointmentId,
         date: newDate,
@@ -139,19 +120,14 @@ export default function Appointments() {
         status: 'rescheduled'
       });
 
-      setRescheduleAppointment(null);
-
       toast({
         title: "Appointment Rescheduled",
         description: "The appointment has been successfully rescheduled.",
       });
-
-      // Use the refetch function from the hook
-      await refetch();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to reschedule appointment",
+        description: error.message,
         variant: "destructive",
       });
     }
@@ -369,12 +345,6 @@ export default function Appointments() {
           </DialogContent>
         </Dialog>
       </div>
-
-        <SchedulingOptimizer
-          appointments={appointments}
-          onSelectSlot={handleScheduleSelect}
-        />
-
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {(appointments as ExtendedAppointment[]).map((appointment) => (

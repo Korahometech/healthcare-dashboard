@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
-import { format, isBefore, startOfToday } from "date-fns";
+import { format } from "date-fns";
 
 const RESCHEDULE_REASONS = [
   { value: "schedule_conflict", label: "Schedule Conflict" },
@@ -44,15 +44,8 @@ export function RescheduleDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleReschedule = async () => {
-    if (!date || !reason) {
-      return;
-    }
-
-    // Validate the new date is not in the past
-    if (isBefore(date, startOfToday())) {
-      return;
-    }
-
+    if (!reason) return;
+    
     setIsSubmitting(true);
     try {
       await onReschedule(date, reason);
@@ -80,7 +73,7 @@ export function RescheduleDialog({
               mode="single"
               selected={date}
               onSelect={(newDate) => newDate && setDate(newDate)}
-              disabled={(date) => isBefore(date, startOfToday())}
+              disabled={(date) => date < new Date()}
               className="rounded-md border"
             />
           </div>
@@ -105,7 +98,7 @@ export function RescheduleDialog({
             </Button>
             <Button
               onClick={handleReschedule}
-              disabled={!reason || isSubmitting || !date}
+              disabled={!reason || isSubmitting}
             >
               {isSubmitting ? (
                 <>

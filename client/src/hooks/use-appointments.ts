@@ -15,7 +15,7 @@ type UpdateAppointmentInput = Partial<InsertAppointment> & {
 export function useAppointments() {
   const queryClient = useQueryClient();
 
-  const query = useQuery<SelectAppointment[]>({
+  const { data: appointments = [], isLoading } = useQuery<SelectAppointment[]>({
     queryKey: ["/api/appointments"],
   });
 
@@ -71,9 +71,8 @@ export function useAppointments() {
   });
 
   return {
-    appointments: query.data ?? [],
-    isLoading: query.isLoading,
-    refetch: query.refetch,
+    appointments,
+    isLoading,
     createAppointment: createAppointment.mutateAsync,
     updateStatus: updateStatus.mutateAsync,
     updateAppointment: updateAppointment.mutateAsync,

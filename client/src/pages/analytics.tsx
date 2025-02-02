@@ -157,21 +157,21 @@ export default function Analytics() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
               Loading healthcare insights...
             </p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2" disabled>
+          <Button variant="outline" className="gap-2" disabled>
             <Download className="h-4 w-4" />
-            Export PDF
+            Export Analytics (PDF)
           </Button>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <StatsCardSkeleton key={i} />
           ))}
@@ -179,13 +179,13 @@ export default function Analytics() {
 
         <div className="flex items-center justify-between gap-4">
           <Select disabled>
-            <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Loading specialties..." />
             </SelectTrigger>
           </Select>
 
           <Select disabled>
-            <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Loading time ranges..." />
             </SelectTrigger>
           </Select>
@@ -219,7 +219,7 @@ export default function Analytics() {
   const appointmentTrends = getAppointmentsByTimeRange(appointments, appointmentTimeRange);
   const healthConditions = calculateHealthConditionsDistribution(patients);
   const bmiDistribution = calculateBMIDistribution(patients);
-    const appointmentOptimization = {
+  const appointmentOptimization = {
     peakHours: [
       { hour: '9 AM', count: 12 },
       { hour: '10 AM', count: 25 },
@@ -252,11 +252,11 @@ export default function Analytics() {
 
   return (
     <TooltipProvider>
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
               Comprehensive healthcare insights and metrics
             </p>
           </div>
@@ -265,15 +265,15 @@ export default function Analytics() {
             fileName={`healthcare-analytics-${format(new Date(), "yyyy-MM-dd")}.pdf`}
           >
             {({ loading }) => (
-              <Button variant="outline" size="sm" className="gap-2" disabled={loading}>
+              <Button variant="outline" className="gap-2" disabled={loading}>
                 <Download className="h-4 w-4" />
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating...
+                    Generating PDF...
                   </>
                 ) : (
-                  "Export PDF"
+                  "Export Analytics (PDF)"
                 )}
               </Button>
             )}
@@ -282,7 +282,7 @@ export default function Analytics() {
 
         <QuickActions actions={analyticsActions} />
 
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Total Patients"
             value={patients.length}
@@ -314,7 +314,7 @@ export default function Analytics() {
             value={specialty}
             onValueChange={(value: Specialty) => setSpecialty(value)}
           >
-            <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select specialty" />
             </SelectTrigger>
             <SelectContent>
@@ -327,18 +327,18 @@ export default function Analytics() {
           </Select>
 
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-2xl font-bold">
               {SPECIALTIES.find(s => s.value === specialty)?.label} Dashboard
             </h2>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon">
                     <HelpCircle className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="text-xs">Customized health metrics for {SPECIALTIES.find(s => s.value === specialty)?.label}</p>
+                  <p>Customized health metrics for {SPECIALTIES.find(s => s.value === specialty)?.label}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -348,7 +348,7 @@ export default function Analytics() {
             value={timeRange}
             onValueChange={(value: TimeRange) => setTimeRange(value)}
           >
-            <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select time range" />
             </SelectTrigger>
             <SelectContent>
@@ -409,7 +409,7 @@ export default function Analytics() {
                 Trend analysis with statistical confidence
               </p>
             </div>
-            <div className="h-[250px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
@@ -491,7 +491,7 @@ export default function Analytics() {
                 Statistical correlation analysis
               </p>
             </div>
-            <div className="h-[250px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
@@ -542,7 +542,7 @@ export default function Analytics() {
                 </TooltipProvider>
               </div>
             </div>
-            <div className="h-[250px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={ageDistribution}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
@@ -590,7 +590,7 @@ export default function Analytics() {
                 </TooltipProvider>
               </div>
             </div>
-            <div className="h-[250px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -673,7 +673,7 @@ export default function Analytics() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="h-[250px]">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={appointmentTrends}>
                   <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
