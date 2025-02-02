@@ -82,6 +82,7 @@ export const symptomAnalysis = pgTable("symptom_analysis", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+
 export const doctorsRelations = relations(doctors, ({ one }) => ({
   specialty: one(specialties, {
     fields: [doctors.specialtyId],
@@ -115,6 +116,7 @@ export const symptomAnalysisRelations = relations(symptomAnalysis, ({ one }) => 
   }),
 }));
 
+
 export const insertSymptomJournalSchema = createInsertSchema(symptomJournals, {
   symptoms: z.array(z.string()).min(1, "At least one symptom is required"),
   severity: z.number().min(1).max(10),
@@ -123,6 +125,7 @@ export const insertSymptomJournalSchema = createInsertSchema(symptomJournals, {
 });
 
 export const insertSymptomAnalysisSchema = createInsertSchema(symptomAnalysis);
+
 
 export const insertDoctorSchema = createInsertSchema(doctors, {
   name: z.string().min(3, 'Name must be at least 3 characters long'),

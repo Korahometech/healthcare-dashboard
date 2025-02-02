@@ -4,7 +4,8 @@
     "analytics": "Analytics",
     "appointments": "Appointments",
     "patients": "Patients",
-    "doctors": "Doctors"
+    "doctors": "Doctors",
+    "documents": "Document Translation"
   },
   "actions": {
     "login": "Login",
@@ -15,7 +16,8 @@
     "delete": "Delete",
     "edit": "Edit",
     "add": "Add",
-    "upload": "Upload"
+    "upload": "Upload",
+    "translate": "Translate"
   },
   "status": {
     "loading": "Loading...",
@@ -31,5 +33,14 @@
     "sr": "Српски",
     "bs": "Bosanski",
     "es": "Español"
+  },
+  "documents": {
+    "title": "Medical Document Translation",
+    "subtitle": "Securely translate medical documents",
+    "upload": "Upload Document",
+    "originalLanguage": "Original Language",
+    "targetLanguage": "Target Language",
+    "status": "Status",
+    "uploadedAt": "Uploaded"
   }
 }

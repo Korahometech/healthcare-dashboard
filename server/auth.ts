@@ -17,6 +17,7 @@ declare global {
   }
 }
 
+// Create PostgreSQL pool
 const pool = createPool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -48,11 +49,6 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     store,
-    cookie: {
-      secure: app.get("env") === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    },
   };
 
   if (app.get("env") === "production") {
@@ -65,82 +61,59 @@ export function setupAuth(app: Express) {
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
-      try {
-        const [user] = await getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false);
-        }
+      const [user] = await getUserByUsername(username);
+      if (!user || !(await comparePasswords(password, user.password))) {
+        return done(null, false);
+      } else {
         return done(null, user);
-      } catch (error) {
-        return done(error);
       }
     }),
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
-    try {
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, id))
-        .limit(1);
-      done(null, user);
-    } catch (error) {
-      done(error);
-    }
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    done(null, user);
   });
 
   app.post("/api/register", async (req, res, next) => {
-    try {
-      // Create user data with required fields
-      const userData = {
-        username: req.body.username,
-        password: req.body.password,
-        email: req.body.email || null,
-        role: "user",
-      };
-
-      const result = insertUserSchema.safeParse(userData);
-
-      if (!result.success) {
-        const error = fromZodError(result.error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      const [existingUser] = await getUserByUsername(result.data.username);
-      if (existingUser) {
-        return res.status(400).json({ error: "Username already exists" });
-      }
-
-      const hashedPassword = await hashPassword(result.data.password);
-
-      // Insert only the fields that exist in the table
-      const [user] = await db
-        .insert(users)
-        .values({
-          username: result.data.username,
-          password: hashedPassword,
-          email: result.data.email,
-          role: result.data.role,
-        })
-        .returning();
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        // Remove sensitive data before sending response
-        const { password: _, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      next(error);
+    const result = insertUserSchema.safeParse(req.body);
+    if (!result.success) {
+      const error = fromZodError(result.error);
+      return res.status(400).send(error.toString());
     }
+
+    const [existingUser] = await getUserByUsername(result.data.username);
+    if (existingUser) {
+      return res.status(400).send("Username already exists");
+    }
+
+    const hashedPassword = await hashPassword(result.data.password);
+    const userData = {
+      username: result.data.username,
+      password: hashedPassword,
+      email: result.data.email,
+      role: result.data.role,
+    };
+
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .returning();
+
+    req.login(user, (err) => {
+      if (err) return next(err);
+      res.status(201).json(user);
+    });
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    const { password: _, ...userWithoutPassword } = req.user!;
-    res.status(200).json(userWithoutPassword);
+    res.status(200).json(req.user);
   });
 
   app.post("/api/logout", (req, res, next) => {
@@ -152,7 +125,6 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const { password: _, ...userWithoutPassword } = req.user!;
-    res.json(userWithoutPassword);
+    res.json(req.user);
   });
 }
