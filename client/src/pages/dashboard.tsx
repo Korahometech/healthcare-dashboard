@@ -141,7 +141,7 @@ function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-8 p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="flex justify-between items-center">
           <div className="space-y-2">
             <div className="h-8 w-64 bg-muted rounded animate-pulse" />
@@ -153,17 +153,15 @@ function Dashboard() {
           </Button>
         </div>
 
-        {/* Quick actions skeleton */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <CardSkeleton key={i} />
+            <CardSkeleton key={i} className="transform transition-all duration-200 hover:scale-[1.02]" />
           ))}
         </div>
 
-        {/* Stats cards skeleton */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <StatsCardSkeleton key={i} />
+            <StatsCardSkeleton key={i} className="transform transition-all duration-200 hover:scale-[1.02]" />
           ))}
         </div>
 
@@ -191,29 +189,37 @@ function Dashboard() {
   }
 
   return (
-    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center mb-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="space-y-8 p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex justify-between items-center mb-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Dashboard Overview
+          </h1>
+          <p className="text-muted-foreground">
             Monitor your clinical practice performance
           </p>
         </div>
-        {/* Export PDF functionality */}
         <PDFDownloadLink
           document={<DashboardPDFReport data={reportData} />}
           fileName={`healthcare-dashboard-${format(new Date(), "yyyy-MM-dd")}.pdf`}
         >
           {({ loading }: { loading: boolean }) => (
-            <Button variant="outline" size="sm" className="gap-2" disabled={loading}>
-              <Download className="h-4 w-4" />
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="gap-2 shadow-sm transition-all duration-200 hover:shadow-md"
+              disabled={loading}
+            >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Generating...
                 </>
               ) : (
-                "Export PDF"
+                <>
+                  <Download className="h-4 w-4" />
+                  Export PDF
+                </>
               )}
             </Button>
           )}
@@ -222,12 +228,13 @@ function Dashboard() {
 
       <QuickActions actions={dashboardActions} />
 
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Patients"
           value={patients.length}
           icon={<Users className="h-4 w-4" />}
           description="Registered patients"
+          className="transform transition-all duration-200 hover:scale-[1.02]"
         />
         <StatsCard
           title="Total Appointments"
@@ -235,156 +242,163 @@ function Dashboard() {
           icon={<Calendar className="h-4 w-4" />}
           description="Appointments to date"
           trending={appointmentsTrending}
+          className="transform transition-all duration-200 hover:scale-[1.02]"
         />
         <StatsCard
           title="Confirmed"
           value={confirmedAppointments}
           icon={<CheckCircle className="h-4 w-4" />}
           description="Completed"
+          className="transform transition-all duration-200 hover:scale-[1.02]"
         />
         <StatsCard
           title="Cancelled"
           value={canceledAppointments}
           icon={<XCircle className="h-4 w-4" />}
           description="Cancelled/missed"
+          className="transform transition-all duration-200 hover:scale-[1.02]"
         />
       </div>
 
       <DashboardLayout defaultSizes={[40, 60]}>
-        <DashboardPanel>
-          <div className="flex items-center justify-between mb-3">
+        <DashboardPanel className="p-6 bg-card rounded-lg shadow-sm">
+          <div className="space-y-6">
             <div>
-              <h2 className="text-lg font-semibold">Appointment Status</h2>
-              <p className="text-xs text-muted-foreground">Current distribution</p>
+              <h2 className="text-xl font-semibold">Appointment Status</h2>
+              <p className="text-sm text-muted-foreground">Current distribution</p>
             </div>
-          </div>
-          <div className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={appointmentsByStatus}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  label={({ name, percent }) =>
-                    `${name} ${(percent * 100).toFixed(0)}%`
-                  }
-                  className="transition-all duration-300"
-                >
-                  {appointmentsByStatus.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                      className="opacity-80 hover:opacity-100 transition-opacity"
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--background))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                  }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  height={36}
-                  iconSize={8}
-                  iconType="circle"
-                  formatter={(value: string) => (
-                    <span className="text-xs">{value}</span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={appointmentsByStatus}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ name, percent }) =>
+                      `${name} ${(percent * 100).toFixed(0)}%`
+                    }
+                    className="transition-all duration-300"
+                  >
+                    {appointmentsByStatus.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                        className="opacity-80 hover:opacity-100 transition-opacity"
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--background))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "var(--radius)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    }}
+                  />
+                  <Legend
+                    verticalAlign="bottom"
+                    height={36}
+                    iconSize={8}
+                    iconType="circle"
+                    formatter={(value: string) => (
+                      <span className="text-sm font-medium">{value}</span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </DashboardPanel>
 
-        <DashboardPanel>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-lg font-semibold">Growth Trends</h2>
-              <p className="text-xs text-muted-foreground">Patient and appointment growth</p>
+        <DashboardPanel className="p-6 bg-card rounded-lg shadow-sm">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Growth Trends</h2>
+                <p className="text-sm text-muted-foreground">Patient and appointment growth</p>
+              </div>
+              <Select
+                value={timeRange}
+                onValueChange={setTimeRange}
+              >
+                <SelectTrigger className="w-[180px] h-9">
+                  <SelectValue placeholder="Select time range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="12m">Last 12 Months</SelectItem>
+                  <SelectItem value="6m">Last 6 Months</SelectItem>
+                  <SelectItem value="3m">Last 3 Months</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={timeRange}
-              onValueChange={setTimeRange}
-            >
-              <SelectTrigger className="w-[140px] h-8 text-xs">
-                <SelectValue placeholder="Select time range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="12m">Last 12 Months</SelectItem>
-                <SelectItem value="6m">Last 6 Months</SelectItem>
-                <SelectItem value="3m">Last 3 Months</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyStats} className="transition-all duration-300">
-                <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
-                <XAxis
-                  dataKey="name"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickMargin={8}
-                />
-                <YAxis
-                  yAxisId="left"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickMargin={8}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickMargin={8}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--background))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)",
-                    fontSize: "12px",
-                    padding: "8px",
-                  }}
-                />
-                <Legend
-                  verticalAlign="top"
-                  height={36}
-                  iconSize={8}
-                  iconType="circle"
-                  formatter={(value: string) => (
-                    <span className="text-xs">{value}</span>
-                  )}
-                />
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="appointments"
-                  stroke={COLORS[0]}
-                  strokeWidth={2}
-                  name="Appointments"
-                  dot={false}
-                  activeDot={{ r: 4, className: "animate-pulse" }}
-                />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="patients"
-                  stroke={COLORS[1]}
-                  strokeWidth={2}
-                  name="New Patients"
-                  dot={false}
-                  activeDot={{ r: 4, className: "animate-pulse" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyStats} className="transition-all duration-300">
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickMargin={8}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--background))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "var(--radius)",
+                      fontSize: "12px",
+                      padding: "8px",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                    }}
+                  />
+                  <Legend
+                    verticalAlign="top"
+                    height={36}
+                    iconSize={8}
+                    iconType="circle"
+                    formatter={(value: string) => (
+                      <span className="text-sm font-medium">{value}</span>
+                    )}
+                  />
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="appointments"
+                    stroke={COLORS[0]}
+                    strokeWidth={2}
+                    name="Appointments"
+                    dot={false}
+                    activeDot={{ r: 4, className: "animate-pulse" }}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="patients"
+                    stroke={COLORS[1]}
+                    strokeWidth={2}
+                    name="New Patients"
+                    dot={false}
+                    activeDot={{ r: 4, className: "animate-pulse" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </DashboardPanel>
       </DashboardLayout>
