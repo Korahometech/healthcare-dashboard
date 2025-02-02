@@ -16,6 +16,7 @@ export function useAppointments() {
   } = useQuery<SelectAppointment[]>({
     queryKey: ["/api/appointments"],
     refetchOnWindowFocus: true,
+    staleTime: 0, // Always fetch fresh data
   });
 
   const updateAppointmentStatusMutation = useMutation({
@@ -34,13 +35,10 @@ export function useAppointments() {
       return response.json();
     },
     onMutate: async ({ id, status }) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
 
-      // Snapshot the previous value
       const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
 
-      // Optimistically update to the new value
       if (previousAppointments) {
         queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], 
           previousAppointments.map(appointment => 
@@ -94,7 +92,7 @@ export function useAppointments() {
     appointments,
     isLoading,
     error,
-    updateAppointmentStatus: updateAppointmentStatusMutation.mutate,
+    updateAppointmentStatus: updateAppointmentStatusMutation.mutateAsync,
     createAppointment,
     deleteAppointment,
   };
