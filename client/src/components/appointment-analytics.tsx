@@ -1,6 +1,6 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppointmentAnalytics } from "@/hooks/use-appointment-analytics";
-import { Clock, Users, TrendingUp } from "lucide-react";
+import { Clock, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -11,8 +11,7 @@ interface AppointmentAnalyticsProps {
 }
 
 export function AppointmentAnalytics({ doctorId, scheduledTime, className }: AppointmentAnalyticsProps) {
-  const { getPredictedWaitTime } = useAppointmentAnalytics();
-  const { data: waitTimeData, isLoading } = getPredictedWaitTime(doctorId, scheduledTime);
+  const { data: waitTimeData, isLoading, error } = useAppointmentAnalytics().getPredictedWaitTime(doctorId, scheduledTime);
 
   return (
     <div className={cn("grid gap-6 md:grid-cols-2", className)}>
@@ -27,11 +26,15 @@ export function AppointmentAnalytics({ doctorId, scheduledTime, className }: App
               <div className="h-8 w-32 bg-muted rounded animate-pulse" />
               <div className="h-4 w-48 bg-muted/50 rounded animate-pulse" />
             </div>
+          ) : error ? (
+            <div className="text-sm text-muted-foreground">
+              Unable to predict wait time at this moment
+            </div>
           ) : (
             <div className="space-y-3">
               <div className="flex items-baseline gap-2">
                 <div className="text-3xl font-bold tracking-tight text-primary">
-                  {waitTimeData?.predictedWaitTime}
+                  {waitTimeData?.predictedWaitTime ?? "—"}
                 </div>
                 <div className="text-lg text-muted-foreground">minutes</div>
               </div>
@@ -53,18 +56,24 @@ export function AppointmentAnalytics({ doctorId, scheduledTime, className }: App
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Current Load</span>
               <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary transition-all duration-500 ease-in-out"
-                  style={{ 
-                    width: `${Math.min(100, (waitTimeData?.predictedWaitTime || 0) / 30 * 100)}%`,
-                  }}
-                />
+                {!error && (
+                  <div 
+                    className="h-full bg-primary transition-all duration-500 ease-in-out"
+                    style={{ 
+                      width: `${Math.min(100, ((waitTimeData?.predictedWaitTime || 0) / 30) * 100)}%`,
+                    }}
+                  />
+                )}
               </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              {waitTimeData?.predictedWaitTime && waitTimeData.predictedWaitTime > 20 
-                ? "High patient volume expected"
-                : "Normal patient volume expected"}
+              {error ? (
+                "Unable to determine patient volume"
+              ) : waitTimeData?.predictedWaitTime && waitTimeData.predictedWaitTime > 20 ? (
+                "High patient volume expected"
+              ) : (
+                "Normal patient volume expected"
+              )}
             </p>
           </div>
         </CardContent>

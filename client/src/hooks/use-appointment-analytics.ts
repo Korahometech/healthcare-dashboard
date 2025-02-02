@@ -1,27 +1,32 @@
 import { useQuery } from "@tanstack/react-query";
-import type { SelectAppointmentAnalytics } from "@db/schema";
+
+interface WaitTimeData {
+  predictedWaitTime: number;
+  confidence: number;
+}
 
 export function useAppointmentAnalytics() {
-  const getPredictedWaitTime = async (doctorId: number, scheduledTime: Date) => {
-    const res = await fetch(
-      `/api/appointments/analytics/wait-time?` +
-      `doctorId=${doctorId}&` +
-      `scheduledTime=${scheduledTime.toISOString()}`
-    );
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
-  };
-
-  const startAppointment = async (appointmentId: number) => {
-    const res = await fetch(`/api/appointments/${appointmentId}/start`, {
-      method: "POST",
+  const getPredictedWaitTime = (doctorId: number, scheduledTime: Date) => {
+    return useQuery<WaitTimeData>({
+      queryKey: [`/api/appointments/analytics/wait-time`, doctorId, scheduledTime],
+      queryFn: async () => {
+        const res = await fetch(
+          `/api/appointments/analytics/wait-time?` +
+          `doctorId=${doctorId}&` +
+          `scheduledTime=${scheduledTime.toISOString()}`
+        );
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText);
+        }
+        return res.json();
+      },
+      retry: false,
+      enabled: !!doctorId && !!scheduledTime,
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
   };
 
   return {
     getPredictedWaitTime,
-    startAppointment,
   };
 }
