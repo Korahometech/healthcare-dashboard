@@ -27,10 +27,25 @@ export function SchedulingOptimizer({
   const [duration, setDuration] = useState(30);
 
   const { data: analytics, isLoading } = useAppointmentAnalytics(selectedDate);
-  
+
   const optimization = analytics 
     ? analytics.optimizedSchedule 
     : predictOptimalSlots(appointments, selectedDate, duration);
+
+  const timeGroups = {
+    morning: optimization.suggestedTimeSlots.filter(slot => {
+      const hour = parseInt(slot.startTime.split(':')[0]);
+      return hour >= 9 && hour < 12;
+    }),
+    afternoon: optimization.suggestedTimeSlots.filter(slot => {
+      const hour = parseInt(slot.startTime.split(':')[0]);
+      return hour >= 12 && hour < 17;
+    }),
+    evening: optimization.suggestedTimeSlots.filter(slot => {
+      const hour = parseInt(slot.startTime.split(':')[0]);
+      return hour >= 17;
+    })
+  };
 
   return (
     <div className="space-y-4">
@@ -61,31 +76,56 @@ export function SchedulingOptimizer({
             disabled={(date) => date < new Date()}
             className="rounded-md border"
           />
+          {optimization.confidenceScore > 0 && (
+            <div className="mt-4 p-3 bg-muted rounded-md">
+              <h4 className="text-sm font-medium mb-2">Schedule Quality Score</h4>
+              <div className="flex items-center gap-2">
+                <div className="h-2 flex-1 bg-background rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all"
+                    style={{ width: `${optimization.confidenceScore * 100}%` }}
+                  />
+                </div>
+                <span className="text-sm">
+                  {Math.round(optimization.confidenceScore * 100)}%
+                </span>
+              </div>
+            </div>
+          )}
         </Card>
 
         <Card className="p-4">
-          <h4 className="font-medium mb-2">Recommended Slots</h4>
-          <div className="space-y-2">
-            {optimization.suggestedTimeSlots.map((slot, index) => (
-              <Button
-                key={index}
-                variant={slot.probability > 0.8 ? "default" : "outline"}
-                className="w-full justify-start"
-                onClick={() => {
-                  const [hours, minutes] = slot.startTime.split(':').map(Number);
-                  const date = new Date(selectedDate);
-                  date.setHours(hours, minutes);
-                  onSelectSlot(date);
-                }}
-              >
-                <Clock className="mr-2 h-4 w-4" />
-                <span className="flex-1">
-                  {slot.startTime} - {slot.endTime}
-                </span>
-                <span className="text-xs opacity-70">
-                  {slot.expectedWaitTime}min wait
-                </span>
-              </Button>
+          <h4 className="font-medium mb-4">Recommended Slots</h4>
+          <div className="space-y-4">
+            {Object.entries(timeGroups).map(([period, slots]) => slots.length > 0 && (
+              <div key={period} className="space-y-2">
+                <h5 className="text-sm font-medium capitalize">{period}</h5>
+                {slots.map((slot, index) => (
+                  <Button
+                    key={index}
+                    variant={slot.probability > 0.8 ? "default" : "outline"}
+                    className={`w-full justify-start ${
+                      slot.probability > 0.8 ? "bg-primary" : 
+                      slot.probability > 0.6 ? "bg-primary/20" : ""
+                    }`}
+                    onClick={() => {
+                      const [hours, minutes] = slot.startTime.split(':').map(Number);
+                      const date = new Date(selectedDate);
+                      date.setHours(hours, minutes);
+                      onSelectSlot(date);
+                    }}
+                  >
+                    <Clock className="mr-2 h-4 w-4" />
+                    <span className="flex-1">
+                      {slot.startTime} - {slot.endTime}
+                    </span>
+                    <span className="text-xs opacity-70 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {slot.expectedWaitTime}min
+                    </span>
+                  </Button>
+                ))}
+              </div>
             ))}
 
             {optimization.suggestedTimeSlots.length === 0 && (
@@ -106,10 +146,10 @@ export function SchedulingOptimizer({
                 {optimization.alternativeSlots.slice(0, 3).map((slot, index) => (
                   <div
                     key={index}
-                    className="text-sm flex justify-between items-center text-muted-foreground"
+                    className="text-sm flex justify-between items-center p-2 rounded-md bg-muted"
                   >
                     <span>{slot.time}</span>
-                    <span className="text-xs">{slot.reason}</span>
+                    <span className="text-xs text-muted-foreground">{slot.reason}</span>
                   </div>
                 ))}
               </div>
