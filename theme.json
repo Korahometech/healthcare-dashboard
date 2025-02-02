@@ -3,5 +3,11 @@
   "primary": "hsl(222 83% 41%)",
   "appearance": "light",
   "radius": 0.75,
-  "shadow": "lg"
+  "shadow": "lg",
+  "transitions": {
+    "mood": {
+      "duration": 500,
+      "timing": "ease-in-out"
+    }
+  }
 }
