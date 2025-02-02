@@ -85,7 +85,7 @@ const DURATIONS = [
 export default function Appointments() {
   const [open, setOpen] = useState(false);
   const [rescheduleAppointment, setRescheduleAppointment] = useState<ExtendedAppointment | null>(null);
-  const { appointments, createAppointment, updateStatus, updateAppointment, deleteAppointment } = useAppointments();
+  const { appointments, updateStatus, createAppointment, updateAppointment, deleteAppointment } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
@@ -402,10 +402,22 @@ export default function Appointments() {
                   className="w-[140px] justify-center"
                 />
                 <Select
-                  defaultValue={appointment.status}
-                  onValueChange={(value) =>
-                    updateStatus({ id: appointment.id, status: value })
-                  }
+                  value={appointment.status}
+                  onValueChange={async (value) => {
+                    try {
+                      await updateStatus({ id: appointment.id, status: value });
+                      toast({
+                        title: "Success",
+                        description: `Status updated to ${value}`,
+                      });
+                    } catch (error: any) {
+                      toast({
+                        title: "Error",
+                        description: error.message || "Failed to update status",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />

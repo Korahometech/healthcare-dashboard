@@ -51,7 +51,27 @@ export function useAppointments() {
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
+      const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
+
+      if (previousAppointments) {
+        queryClient.setQueryData<SelectAppointment[]>(
+          ["/api/appointments"],
+          previousAppointments.map(appointment =>
+            appointment.id === id ? { ...appointment, status } : appointment
+          )
+        );
+      }
+
+      return { previousAppointments };
+    },
+    onError: (_, __, context) => {
+      if (context?.previousAppointments) {
+        queryClient.setQueryData(["/api/appointments"], context.previousAppointments);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });
