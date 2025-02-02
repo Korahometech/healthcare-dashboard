@@ -952,25 +952,29 @@ Mood: ${h.mood}
           })
           .returning();
   
-        // Send email notification about upload
-        await sendEmail({
-          to: document.uploadedBy ? (await db.query.doctors.findFirst({ where: eq(doctors.id, document.uploadedBy) }))?.email : process.env.ADMIN_EMAIL!,
-          subject: "Medical Document Upload Confirmation",
-          text: `A new medical document "${document.fileName}" has been uploaded and is ready for processing.`,
-          html: `
-            <h2>Medical Document Upload Confirmation</h2>
-            <p>A new medical document has been uploaded to the system:</p>
-            <ul>
-              <li>File Name: ${document.fileName}</li>
-              <li>Original Language: ${document.originalLanguage}</li>
-              <li>Status: Pending Processing</li>
-            </ul>
-            <p>You will be notified when the document is ready for translation.</p>
-          `,
-        });
+        // Try to send email notification, but don't fail if it errors
+        try {
+          await sendEmail({
+            to: document.uploadedBy ? (await db.query.doctors.findFirst({ where: eq(doctors.id, document.uploadedBy) }))?.email : process.env.ADMIN_EMAIL!,
+            subject: "Medical Document Upload Confirmation",
+            text: `A new medical document "${document.fileName}" has been uploaded and is ready for processing.`,
+            html: `
+              <h2>Medical Document Upload Confirmation</h2>
+              <p>A new medical document has been uploaded to the system:</p>
+              <ul>
+                <li>File Name: ${document.fileName}</li>
+                <li>Original Language: ${document.originalLanguage}</li>
+                <li>Status: Pending Processing</li>
+              </ul>
+              <p>You will be notified when the document is ready for translation.</p>
+            `,
+          });
+        } catch (emailError) {
+          console.error('Error sending email:', emailError);
+          // Continue execution even if email fails
+        }
   
-        res.json(document);
-      } catch (error: any) {
+        res.json(document);      } catch (error: any) {
         console.error("Error uploading document:", error);
         res.status(500).json({
           error: "Failed to upload document",
