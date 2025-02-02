@@ -4,7 +4,6 @@ import { usePatients } from "@/hooks/use-patients";
 import { Users, Calendar, CheckCircle, XCircle, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
-import { WelcomeScreen } from "@/components/welcome-screen";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 import {
   Select,
@@ -168,8 +167,6 @@ function Dashboard() {
         transition={{ duration: 0.3 }}
         className="space-y-6"
       >
-        <WelcomeScreen name="Dr. Smith" role="doctor" />
-
         <QuickActions />
 
         <div className="flex justify-between items-center">
