@@ -37,7 +37,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { SelectAppointment } from "@db/schema";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { StatusBadge } from "@/components/ui/status-badge";
 
 const COLORS = [
   'hsl(var(--primary))',
@@ -161,7 +160,7 @@ function Dashboard() {
 
   if (isLoading) {
     return (
-      <motion.div
+      <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -177,7 +176,7 @@ function Dashboard() {
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div
+      <motion.div 
         key="dashboard"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -218,7 +217,7 @@ function Dashboard() {
           </PDFDownloadLink>
         </div>
 
-        <motion.div
+        <motion.div 
           className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -267,7 +266,7 @@ function Dashboard() {
                 <p className="text-sm text-muted-foreground mt-1">Current distribution</p>
               </div>
             </div>
-            <motion.div
+            <motion.div 
               className="h-[300px]"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -337,7 +336,7 @@ function Dashboard() {
                 </SelectContent>
               </Select>
             </div>
-            <motion.div
+            <motion.div 
               className="h-[300px]"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}

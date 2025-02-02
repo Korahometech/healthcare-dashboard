@@ -64,19 +64,14 @@ export function RescheduleDialog({
         aria-describedby="reschedule-dialog-description"
       >
         <DialogHeader>
-          <DialogTitle id="reschedule-dialog-title">
-            Reschedule Appointment
-          </DialogTitle>
+          <DialogTitle id="reschedule-dialog-title">Reschedule Appointment</DialogTitle>
           <DialogDescription id="reschedule-dialog-description">
             Please select a new date and provide a reason for rescheduling.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4" role="form">
+        <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label
-              id="date-label"
-              className="text-sm font-medium"
-            >
+            <label className="text-sm font-medium" id="calendar-label">
               New Date
             </label>
             <Calendar
@@ -85,18 +80,15 @@ export function RescheduleDialog({
               onSelect={(newDate) => newDate && setDate(newDate)}
               disabled={(date) => date < new Date()}
               className="rounded-md border"
-              aria-labelledby="date-label"
+              aria-labelledby="calendar-label"
             />
           </div>
           <div className="space-y-2">
-            <label
-              id="reason-label"
-              className="text-sm font-medium"
-            >
+            <label className="text-sm font-medium" id="reason-label">
               Reason for Rescheduling
             </label>
-            <Select
-              onValueChange={setReason}
+            <Select 
+              onValueChange={setReason} 
               value={reason}
               aria-labelledby="reason-label"
             >
@@ -113,17 +105,12 @@ export function RescheduleDialog({
             </Select>
           </div>
           <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              type="button"
-            >
+            <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
             <Button
               onClick={handleReschedule}
               disabled={!reason || isSubmitting}
-              type="button"
             >
               {isSubmitting ? (
                 <>

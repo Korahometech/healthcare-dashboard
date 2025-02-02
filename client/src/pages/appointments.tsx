@@ -57,7 +57,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
-import { StatusBadge } from "@/components/ui/status-badge";
 
 type ExtendedAppointment = SelectAppointment & {
   patient?: { name: string };
@@ -85,7 +84,7 @@ const DURATIONS = [
 export default function Appointments() {
   const [open, setOpen] = useState(false);
   const [rescheduleAppointment, setRescheduleAppointment] = useState<ExtendedAppointment | null>(null);
-  const { appointments, createAppointment, updateAppointment, deleteAppointment, updateAppointmentStatus } = useAppointments();
+  const { appointments, createAppointment, updateStatus, updateAppointment, deleteAppointment } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
@@ -176,10 +175,10 @@ export default function Appointments() {
               New Appointment
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]" aria-labelledby="dialog-title" aria-describedby="dialog-description">
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle id="dialog-title">Schedule New Appointment</DialogTitle>
-              <DialogDescription id="dialog-description">
+              <DialogTitle>Schedule New Appointment</DialogTitle>
+              <DialogDescription>
                 Fill in the details to schedule a new patient appointment.
               </DialogDescription>
             </DialogHeader>
@@ -397,28 +396,11 @@ export default function Appointments() {
                 )}
               </div>
               <div className="space-y-2">
-                <StatusBadge 
-                  status={appointment.status} 
-                  className="w-[140px] justify-center"
-                />
                 <Select
-                  value={appointment.status}
-                  onValueChange={(value) => {
-                    updateAppointmentStatus({ id: appointment.id, status: value })
-                      .then(() => {
-                        toast({
-                          title: "Success",
-                          description: `Status updated to ${value}`,
-                        });
-                      })
-                      .catch((error) => {
-                        toast({
-                          title: "Error",
-                          description: error.message || "Failed to update status",
-                          variant: "destructive",
-                        });
-                      });
-                  }}
+                  defaultValue={appointment.status}
+                  onValueChange={(value) =>
+                    updateStatus({ id: appointment.id, status: value })
+                  }
                 >
                   <SelectTrigger className="w-[140px]">
                     <SelectValue />
@@ -427,7 +409,7 @@ export default function Appointments() {
                     <SelectItem value="scheduled">Scheduled</SelectItem>
                     <SelectItem value="confirmed">Confirmed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">

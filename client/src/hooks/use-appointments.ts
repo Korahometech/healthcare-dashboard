@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InsertAppointment, SelectAppointment } from "@db/schema";
-import { apiRequest } from "@/lib/queryClient";
 
 type CreateAppointmentInput = InsertAppointment & {
   isTeleconsultation?: boolean;
@@ -23,7 +22,12 @@ export function useAppointments() {
 
   const createAppointment = useMutation({
     mutationFn: async (appointment: CreateAppointmentInput) => {
-      const res = await apiRequest("POST", "/api/appointments", appointment);
+      const res = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(appointment),
+      });
+      if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
     onSuccess: () => {
@@ -31,7 +35,7 @@ export function useAppointments() {
     },
   });
 
-  const updateAppointmentStatus = useMutation({
+  const updateStatus = useMutation({
     mutationFn: async ({
       id,
       status,
@@ -39,37 +43,27 @@ export function useAppointments() {
       id: number;
       status: string;
     }) => {
-      const res = await apiRequest("PUT", `/api/appointments/${id}/status`, { status });
+      const res = await fetch(`/api/appointments/${id}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
-    onMutate: async ({ id, status }) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
-      const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
-
-      if (previousAppointments) {
-        queryClient.setQueryData<SelectAppointment[]>(
-          ["/api/appointments"],
-          previousAppointments.map((appointment) =>
-            appointment.id === id ? { ...appointment, status } : appointment
-          )
-        );
-      }
-
-      return { previousAppointments };
-    },
-    onError: (_, __, context) => {
-      if (context?.previousAppointments) {
-        queryClient.setQueryData(["/api/appointments"], context.previousAppointments);
-      }
-    },
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });
 
   const updateAppointment = useMutation({
     mutationFn: async (appointment: UpdateAppointmentInput) => {
-      const res = await apiRequest("PUT", `/api/appointments/${appointment.id}`, appointment);
+      const res = await fetch(`/api/appointments/${appointment.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(appointment),
+      });
+      if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
     onSuccess: () => {
@@ -79,7 +73,10 @@ export function useAppointments() {
 
   const deleteAppointment = useMutation({
     mutationFn: async (id: number) => {
-      const res = await apiRequest("DELETE", `/api/appointments/${id}`);
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(await res.text());
       return id;
     },
     onMutate: async (deletedId) => {
@@ -107,7 +104,7 @@ export function useAppointments() {
     appointments,
     isLoading,
     createAppointment: createAppointment.mutateAsync,
-    updateAppointmentStatus: updateAppointmentStatus.mutateAsync,
+    updateStatus: updateStatus.mutateAsync,
     updateAppointment: updateAppointment.mutateAsync,
     deleteAppointment: deleteAppointment.mutateAsync,
   };
