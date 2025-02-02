@@ -58,10 +58,14 @@ export function RescheduleDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent 
+        className="sm:max-w-[425px]"
+        aria-labelledby="reschedule-dialog-title"
+        aria-describedby="reschedule-dialog-description"
+      >
         <DialogHeader>
-          <DialogTitle>Reschedule Appointment</DialogTitle>
-          <DialogDescription>
+          <DialogTitle id="reschedule-dialog-title">Reschedule Appointment</DialogTitle>
+          <DialogDescription id="reschedule-dialog-description">
             Please select a new date and provide a reason for rescheduling.
           </DialogDescription>
         </DialogHeader>
