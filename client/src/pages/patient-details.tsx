@@ -3,10 +3,14 @@ import { usePatients } from "@/hooks/use-patients";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SymptomJournal } from "@/components/symptom-journal";
 import { CardSkeleton, TextSkeleton, StatsCardSkeleton } from "@/components/ui/skeleton";
+import { useHealthReport } from "@/hooks/use-health-report";
+import { Button } from "@/components/ui/button";
+import { FileText, Loader2 } from "lucide-react";
 
 export default function PatientDetails() {
   const { id } = useParams<{ id: string }>();
   const { patients, isLoading } = usePatients();
+  const { generateReport, isGenerating } = useHealthReport();
   const patient = patients.find((p) => p.id === parseInt(id));
 
   if (isLoading) {
@@ -47,7 +51,21 @@ export default function PatientDetails() {
 
   return (
     <div className="container py-6">
-      <h1 className="text-3xl font-bold mb-6">{patient.name}</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">{patient.name}</h1>
+        <Button 
+          onClick={() => generateReport(patient.id)} 
+          disabled={isGenerating}
+          className="gap-2"
+        >
+          {isGenerating ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+          {isGenerating ? 'Generating Report...' : 'Generate Health Report'}
+        </Button>
+      </div>
 
       <Tabs defaultValue="symptom-journal" className="space-y-4">
         <TabsList>

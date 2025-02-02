@@ -1446,6 +1446,83 @@ Mood: ${h.mood}
       });
     }
   });
+  /**
+   * @swagger
+   * /api/patients/{patientId}/health-report:
+   *   get:
+   *     summary: Generate health report
+   *     description: Generate a comprehensive health report for a patient
+   *     tags: [Patients]
+   *     parameters:
+   *       - in: path
+   *         name: patientId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Patient ID
+   *     responses:
+   *       200:
+   *         description: Patient health report data
+   */
+  app.get("/api/patients/:patientId/health-report", async (req, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+
+      // Get patient information
+      const patient = await db.query.patients.findFirst({
+        where: eq(patients.id, patientId),
+      });
+
+      if (!patient) {
+        return res.status(404).json({ error: "Patient not found" });
+      }
+
+      // Get recent appointments
+      const recentAppointments = await db.query.appointments.findMany({
+        where: eq(appointments.patientId, patientId),
+        orderBy: (appointments, { desc }) => [desc(appointments.date)],
+        limit: 5,
+        with: {
+          doctor: {
+            with: {
+              specialty: true,
+            },
+          },
+        },
+      });
+
+      // Get symptom journals
+      const symptomJournals = await db.query.symptomJournals.findMany({
+        where: eq(symptomJournals.patientId, patientId),
+        orderBy: (journals, { desc }) => [desc(journals.dateRecorded)],
+        with: {
+          analysis: true,
+        },
+      });
+
+      // Compile the report data
+      const reportData = {
+        patient: {
+          name: patient.name,
+          dateOfBirth: patient.dateOfBirth,
+          healthConditions: patient.healthConditions,
+          medications: patient.medications,
+          allergies: patient.allergies,
+        },
+        appointments: recentAppointments,
+        symptomJournals,
+        generatedDate: new Date(),
+      };
+
+      res.json(reportData);
+    } catch (error: any) {
+      console.error("Error generating health report:", error);
+      res.status(500).json({
+        error: "Failed to generate health report",
+        details: error.message,
+      });
+    }
+  });
   function getTimeSlot(date: Date): string {
     const hour = date.getHours();
     if (hour < 12) return 'morning';
