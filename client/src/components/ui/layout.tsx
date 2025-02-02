@@ -7,6 +7,7 @@ import {
   BarChart,
   Menu,
   UserCog,
+  LogOut,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./sheet";
 import { ScrollArea } from "./scroll-area";
@@ -14,6 +15,7 @@ import { useState } from "react";
 import { LanguageSwitcher } from "./language-switcher";
 import { useTranslation } from "react-i18next";
 import { OnboardingTour } from "./onboarding-tour";
+import { useAuth } from "@/hooks/use-auth";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "navigation.dashboard", href: "/" },
@@ -27,6 +29,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
+  const { user, logoutMutation } = useAuth();
   const [showTour] = useState(() => {
     // Check if this is the user's first visit
     const hasSeenTour = localStorage.getItem("hasSeenTour");
@@ -36,6 +39,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
     return false;
   });
+
+  // Don't show layout if not authenticated (except for auth page)
+  if (!user && location !== "/auth") {
+    return <>{children}</>;
+  }
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
 
   const Sidebar = () => (
     <div className="space-y-6 py-4">
@@ -59,8 +71,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <div className="px-3 py-2">
-        <div className="mb-4">
+        <div className="space-y-4">
           <LanguageSwitcher />
+          {user && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={handleLogout}
+              disabled={logoutMutation.isPending}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              {t("actions.logout")}
+            </Button>
+          )}
         </div>
       </div>
     </div>
