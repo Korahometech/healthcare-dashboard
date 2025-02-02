@@ -31,7 +31,7 @@ export function useAppointments() {
     },
   });
 
-  const updateStatus = useMutation({
+  const updateAppointmentStatus = useMutation({
     mutationFn: async ({
       id,
       status,
@@ -49,7 +49,7 @@ export function useAppointments() {
       if (previousAppointments) {
         queryClient.setQueryData<SelectAppointment[]>(
           ["/api/appointments"],
-          previousAppointments.map(appointment =>
+          previousAppointments.map((appointment) =>
             appointment.id === id ? { ...appointment, status } : appointment
           )
         );
@@ -107,7 +107,7 @@ export function useAppointments() {
     appointments,
     isLoading,
     createAppointment: createAppointment.mutateAsync,
-    updateStatus: updateStatus.mutateAsync,
+    updateStatus: updateAppointmentStatus.mutateAsync,
     updateAppointment: updateAppointment.mutateAsync,
     deleteAppointment: deleteAppointment.mutateAsync,
   };

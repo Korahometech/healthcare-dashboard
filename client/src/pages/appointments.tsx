@@ -85,7 +85,7 @@ const DURATIONS = [
 export default function Appointments() {
   const [open, setOpen] = useState(false);
   const [rescheduleAppointment, setRescheduleAppointment] = useState<ExtendedAppointment | null>(null);
-  const { appointments, updateStatus, createAppointment, updateAppointment, deleteAppointment } = useAppointments();
+  const { appointments, updateStatus, createAppointment, updateAppointment, deleteAppointment, updateAppointmentStatus } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
@@ -405,7 +405,8 @@ export default function Appointments() {
                   value={appointment.status}
                   onValueChange={async (value) => {
                     try {
-                      await updateStatus({ id: appointment.id, status: value });
+                      await updateAppointmentStatus({ id: appointment.id, status: value });
+                      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
                       toast({
                         title: "Success",
                         description: `Status updated to ${value}`,
