@@ -39,6 +39,7 @@ export function useAppointments() {
       id: number;
       status: string;
     }) => {
+      console.log('Updating status via mutation:', { id, status });
       const res = await apiRequest("PUT", `/api/appointments/${id}/status`, { status });
       return res.json();
     },
@@ -58,6 +59,7 @@ export function useAppointments() {
       return { previousAppointments };
     },
     onError: (_, __, context) => {
+      console.error('Error in updateAppointmentStatus mutation');
       if (context?.previousAppointments) {
         queryClient.setQueryData(["/api/appointments"], context.previousAppointments);
       }
