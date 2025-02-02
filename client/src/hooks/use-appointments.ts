@@ -82,7 +82,6 @@ export function useAppointments() {
         throw new Error(error || "Failed to delete appointment");
       }
 
-      // Return the ID of the deleted appointment
       return id;
     },
     onMutate: async (deletedId) => {
@@ -90,12 +89,13 @@ export function useAppointments() {
       await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
 
       // Snapshot the previous value
-      const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]) || [];
+      const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
 
       // Optimistically update to the new value
-      queryClient.setQueryData<SelectAppointment[]>(["/api/appointments"], (old = []) => {
-        return old.filter(appointment => appointment.id !== deletedId);
-      });
+      queryClient.setQueryData<SelectAppointment[]>(
+        ["/api/appointments"],
+        (old = []) => old.filter(appointment => appointment.id !== deletedId)
+      );
 
       // Return a context object with the snapshotted value
       return { previousAppointments };
