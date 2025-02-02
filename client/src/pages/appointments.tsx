@@ -74,7 +74,7 @@ const DURATIONS = [
 export default function Appointments() {
   const [open, setOpen] = useState(false);
   const [rescheduleAppointment, setRescheduleAppointment] = useState<ExtendedAppointment | null>(null);
-  const { appointments, createAppointment, updateStatus, updateAppointment } = useAppointments();
+  const { appointments, refetch, createAppointment, updateStatus, updateAppointment } = useAppointments();
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
@@ -137,8 +137,8 @@ export default function Appointments() {
         description: "The appointment has been successfully rescheduled.",
       });
 
-      // Refetch appointments to update the list
-      appointments.refetch();
+      // Use the refetch function from the hook
+      await refetch();
     } catch (error: any) {
       toast({
         title: "Error",
