@@ -57,6 +57,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
+import { FeatureTooltip } from "@/components/ui/feature-tooltip";
 
 type ExtendedAppointment = SelectAppointment & {
   patient?: { name: string };
@@ -169,12 +170,17 @@ export default function Appointments() {
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Appointment
-            </Button>
-          </DialogTrigger>
+          <FeatureTooltip
+            featureId="new-appointment"
+            content="Click here to schedule a new appointment. You can select the patient, doctor, date, and duration."
+          >
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Appointment
+              </Button>
+            </DialogTrigger>
+          </FeatureTooltip>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Schedule New Appointment</DialogTitle>
@@ -396,32 +402,42 @@ export default function Appointments() {
                 )}
               </div>
               <div className="space-y-2">
-                <Select
-                  defaultValue={appointment.status}
-                  onValueChange={(value) =>
-                    updateStatus({ id: appointment.id, status: value })
-                  }
+                <FeatureTooltip
+                  featureId="appointment-status"
+                  content="Change the appointment status here. Track whether appointments are scheduled, confirmed, or cancelled."
                 >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="scheduled">Scheduled</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="rescheduled">Rescheduled</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => setRescheduleAppointment(appointment)}
+                  <Select
+                    defaultValue={appointment.status}
+                    onValueChange={(value) =>
+                      updateStatus({ id: appointment.id, status: value })
+                    }
                   >
-                    <Clock className="mr-2 h-4 w-4" />
-                    Reschedule
-                  </Button>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="rescheduled">Rescheduled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FeatureTooltip>
+                <div className="flex gap-2">
+                  <FeatureTooltip
+                    featureId="reschedule-appointment"
+                    content="Need to change the appointment time? Click here to reschedule."
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setRescheduleAppointment(appointment)}
+                    >
+                      <Clock className="mr-2 h-4 w-4" />
+                      Reschedule
+                    </Button>
+                  </FeatureTooltip>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button

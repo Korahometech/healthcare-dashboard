@@ -13,7 +13,6 @@ import { ScrollArea } from "./scroll-area";
 import { useState } from "react";
 import { LanguageSwitcher } from "./language-switcher";
 import { useTranslation } from "react-i18next";
-import { useTour } from "@/components/providers/tour-provider";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "navigation.dashboard", href: "/" },
@@ -27,16 +26,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
-  const { startTour, isActive } = useTour();
-  const [hasSeenTour] = useState(() => {
-    const tourCompleted = localStorage.getItem("tourCompleted");
-    if (!tourCompleted) {
-      // Start tour automatically on first visit
-      setTimeout(() => startTour(), 1000);
-      return false;
-    }
-    return true;
-  });
 
   const Sidebar = () => (
     <div className="space-y-6 py-4">
@@ -44,13 +33,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <h2 className="mb-4 px-4 text-xl font-semibold tracking-tight">
           Medical Admin
         </h2>
-        <div className="space-y-1" data-tour="dashboard-overview">
-          {menuItems.map(({ icon: Icon, label, href, dataTour }) => (
+        <div className="space-y-1">
+          {menuItems.map(({ icon: Icon, label, href }) => (
             <Link key={href} href={href}>
               <Button
                 variant={location === href ? "secondary" : "ghost"}
                 className="w-full justify-start transition-colors duration-200"
-                data-tour={dataTour}
               >
                 <Icon className="mr-2 h-4 w-4" />
                 {t(label)}

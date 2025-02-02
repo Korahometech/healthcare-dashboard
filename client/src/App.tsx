@@ -3,7 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AmplifyProvider } from "@/components/providers/amplify-provider";
-import { TourProvider } from "@/components/providers/tour-provider";
+import { TooltipManagerProvider } from "@/components/providers/tooltip-manager";
 import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Appointments from "@/pages/appointments";
@@ -37,10 +37,10 @@ function App() {
   return (
     <AmplifyProvider>
       <QueryClientProvider client={queryClient}>
-        <TourProvider>
+        <TooltipManagerProvider>
           <Router />
           <Toaster />
-        </TourProvider>
+        </TooltipManagerProvider>
       </QueryClientProvider>
     </AmplifyProvider>
   );
