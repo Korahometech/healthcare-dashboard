@@ -43,23 +43,25 @@ export function QuickActions({ actions }: QuickActionsProps) {
 
 // Predefined quick action sets for different pages
 export const dashboardActions: QuickAction[] = [
-  { label: "New Appointment", icon: Calendar, href: "/appointments/new" },
-  { label: "Add Patient", icon: UserPlus, href: "/patients/new" },
+  { label: "New Appointment", icon: Calendar, href: "/appointments" },
+  { label: "Add Patient", icon: UserPlus, href: "/patients" },
   { label: "View Analytics", icon: LineChart, href: "/analytics" },
 ];
 
 export const appointmentActions: QuickAction[] = [
-  { label: "New Appointment", icon: Plus, href: "/appointments/new" },
-  { label: "Today's Schedule", icon: Calendar, href: "/appointments?filter=today" },
-  { label: "Refresh", icon: RefreshCcw, href: "/appointments" },
+  { label: "New Appointment", icon: Plus, href: "/appointments" },
+  { label: "Today's Schedule", icon: Calendar, href: "/appointments" },
+  { label: "View Patients", icon: User, href: "/patients" },
 ];
 
 export const patientActions: QuickAction[] = [
-  { label: "Add Patient", icon: UserPlus, href: "/patients/new" },
+  { label: "Add Patient", icon: UserPlus, href: "/patients" },
   { label: "View Records", icon: FileText, href: "/patients" },
+  { label: "Schedule Appointment", icon: Calendar, href: "/appointments" },
 ];
 
 export const analyticsActions: QuickAction[] = [
-  { label: "Export Report", icon: FileText, href: "#" },
+  { label: "View Patients", icon: User, href: "/patients" },
+  { label: "View Appointments", icon: Calendar, href: "/appointments" },
   { label: "Update Data", icon: RefreshCcw, href: "/analytics" },
 ];
