@@ -29,9 +29,26 @@ export function useDoctors() {
     },
   });
 
+  const { mutateAsync: deleteDoctor } = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/doctors/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error);
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/doctors"] });
+    },
+  });
+
   return {
     doctors,
     isLoading,
     createDoctor,
+    deleteDoctor,
   };
 }

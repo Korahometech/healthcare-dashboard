@@ -687,6 +687,56 @@ export function registerRoutes(app: Express): Server {
   });
   /**
    * @swagger
+   * /api/doctors/{id}:
+   *   delete:
+   *     summary: Delete a doctor
+   *     description: Remove a doctor from the system
+   *     tags: [Doctors]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Doctor ID
+   *     responses:
+   *       200:
+   *         description: Doctor successfully deleted
+   *       404:
+   *         description: Doctor not found
+   *       500:
+   *         description: Server error
+   */
+  app.delete("/api/doctors/:id", async (req, res) => {
+    try {
+      const doctorId = parseInt(req.params.id);
+  
+      // Check if the doctor exists
+      const doctorExists = await db.query.doctors.findFirst({
+        where: eq(doctors.id, doctorId),
+      });
+  
+      if (!doctorExists) {
+        return res.status(404).json({ error: "Doctor not found" });
+      }
+  
+      // Delete doctor's appointments first
+      await db.delete(appointments).where(eq(appointments.doctorId, doctorId));
+  
+      // Delete the doctor
+      await db.delete(doctors).where(eq(doctors.id, doctorId));
+  
+      res.json({ message: "Doctor successfully deleted" });
+    } catch (error: any) {
+      console.error('Error deleting doctor:', error);
+      res.status(500).json({
+        error: 'Failed to delete doctor',
+        details: error.message
+      });
+    }
+  });
+  /**
+   * @swagger
    * /api/patients/{patientId}/symptom-journals:
    *   post:
    *     summary: Create a symptom journal entry with AI analysis

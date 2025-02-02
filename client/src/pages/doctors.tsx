@@ -3,7 +3,7 @@ import { useDoctors } from "@/hooks/use-doctors";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,6 +20,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -63,7 +73,8 @@ const availableDays = [
 
 export default function Doctors() {
   const [open, setOpen] = useState(false);
-  const { doctors, createDoctor } = useDoctors();
+  const [doctorToDelete, setDoctorToDelete] = useState<number | null>(null);
+  const { doctors, createDoctor, deleteDoctor } = useDoctors();
   const { toast } = useToast();
 
   const form = useForm<InsertDoctor>({
@@ -92,6 +103,23 @@ export default function Doctors() {
       toast({
         title: "Success",
         description: "Healthcare provider added successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDelete = async (doctorId: number) => {
+    try {
+      await deleteDoctor(doctorId);
+      setDoctorToDelete(null);
+      toast({
+        title: "Success",
+        description: "Healthcare provider removed successfully",
       });
     } catch (error: any) {
       toast({
@@ -323,9 +351,19 @@ export default function Doctors() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-lg">{doctor.name}</h3>
-                <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded-full">
-                  {specialties.find(s => s.id === doctor.specialtyId)?.name || 'General Practice'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded-full">
+                    {specialties.find(s => s.id === doctor.specialtyId)?.name || 'General Practice'}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => setDoctorToDelete(doctor.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               {doctor.qualification && (
                 <p className="text-sm text-muted-foreground">
@@ -363,6 +401,27 @@ export default function Doctors() {
           </Card>
         ))}
       </div>
+
+      <AlertDialog open={doctorToDelete !== null} onOpenChange={(open) => !open && setDoctorToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Healthcare Provider</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this healthcare provider? This action cannot be undone.
+              All appointments associated with this provider will also be removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => doctorToDelete && handleDelete(doctorToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove Provider
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
