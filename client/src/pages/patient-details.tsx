@@ -2,7 +2,7 @@ import { useParams } from "wouter";
 import { usePatients } from "@/hooks/use-patients";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SymptomJournal } from "@/components/symptom-journal";
-import { Loader2 } from "lucide-react";
+import { CardSkeleton, TextSkeleton, StatsCardSkeleton } from "@/components/ui/skeleton";
 
 export default function PatientDetails() {
   const { id } = useParams<{ id: string }>();
@@ -11,8 +11,32 @@ export default function PatientDetails() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-border" />
+      <div className="container py-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-6">
+          {/* Header skeleton */}
+          <TextSkeleton lines={2} />
+
+          {/* Tabs skeleton */}
+          <div className="space-y-4">
+            <div className="flex gap-2 border-b">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="px-4 py-2">
+                  <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                </div>
+              ))}
+            </div>
+
+            {/* Tab content skeleton */}
+            <div className="space-y-6">
+              <CardSkeleton />
+              <StatsCardSkeleton />
+              <div className="grid gap-4 md:grid-cols-2">
+                <CardSkeleton />
+                <CardSkeleton />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

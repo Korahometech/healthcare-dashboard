@@ -4,6 +4,7 @@ import { usePatients } from "@/hooks/use-patients";
 import { Users, Calendar, CheckCircle, XCircle, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
+import { CardSkeleton, StatsCardSkeleton, ChartSkeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -140,11 +141,51 @@ function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[80vh]">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-sm text-muted-foreground">Loading dashboard data...</p>
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <div className="h-8 w-64 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-48 bg-muted rounded animate-pulse" />
+          </div>
+          <Button variant="outline" size="lg" className="gap-2" disabled>
+            <Download className="h-4 w-4" />
+            Export Report
+          </Button>
         </div>
+
+        {/* Quick actions skeleton */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+
+        {/* Stats cards skeleton */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <StatsCardSkeleton key={i} />
+          ))}
+        </div>
+
+        <DashboardLayout defaultSizes={[40, 60]}>
+          <DashboardPanel>
+            <div className="space-y-4">
+              <div className="h-6 w-48 bg-muted rounded animate-pulse" />
+              <ChartSkeleton />
+            </div>
+          </DashboardPanel>
+          <DashboardPanel>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="h-6 w-48 bg-muted rounded animate-pulse" />
+                <div className="w-[180px]">
+                  <div className="h-10 bg-muted rounded animate-pulse" />
+                </div>
+              </div>
+              <ChartSkeleton />
+            </div>
+          </DashboardPanel>
+        </DashboardLayout>
       </div>
     );
   }
