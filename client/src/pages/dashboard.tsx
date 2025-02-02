@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { StatsCard } from "@/components/ui/stats-card";
 import { useAppointments } from "@/hooks/use-appointments";
 import { usePatients } from "@/hooks/use-patients";
 import { Users, Calendar, CheckCircle, XCircle, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardLayout, DashboardPanel } from "@/components/ui/dashboard-layout";
-import { QuickActions } from "@/components/dashboard/quick-actions";
 import {
   Select,
   SelectContent,
@@ -33,10 +31,10 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectAppointment } from "@db/schema";
 import { motion, AnimatePresence } from "framer-motion";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const COLORS = [
   'hsl(var(--primary))',
@@ -52,28 +50,12 @@ type AppointmentWithPatient = SelectAppointment & {
 };
 
 function Dashboard() {
-  const { appointments, isLoading: appointmentsLoading, updateAppointmentStatus } = useAppointments();
+  const { appointments, isLoading: appointmentsLoading } = useAppointments();
   const { patients, isLoading: patientsLoading } = usePatients();
   const [timeRange, setTimeRange] = useState("6m");
   const { toast } = useToast();
 
   const isLoading = appointmentsLoading || patientsLoading;
-
-  const handleStatusChange = async (appointmentId: number, newStatus: string) => {
-    try {
-      await updateAppointmentStatus({ id: appointmentId, status: newStatus });
-      toast({
-        title: "Success",
-        description: `Appointment status updated to ${newStatus}`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update appointment status",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Calculate trending percentages
   const previousPeriodAppointments = appointments.filter(a => {
@@ -184,8 +166,6 @@ function Dashboard() {
         transition={{ duration: 0.3 }}
         className="space-y-6"
       >
-        <QuickActions />
-
         <div className="flex justify-between items-center">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
