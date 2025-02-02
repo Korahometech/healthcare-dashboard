@@ -15,8 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { Loader2 } from "lucide-react";
 
 const RESCHEDULE_REASONS = [
   { value: "schedule_conflict", label: "Schedule Conflict" },
@@ -45,7 +44,7 @@ export function RescheduleDialog({
 
   const handleReschedule = async () => {
     if (!reason) return;
-    
+
     setIsSubmitting(true);
     try {
       await onReschedule(date, reason);
@@ -59,7 +58,7 @@ export function RescheduleDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Reschedule Appointment</DialogTitle>
           <DialogDescription>
@@ -68,18 +67,19 @@ export function RescheduleDialog({
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium">New Date</label>
+            <label className="text-sm font-medium" id="calendar-label">New Date</label>
             <Calendar
               mode="single"
               selected={date}
               onSelect={(newDate) => newDate && setDate(newDate)}
               disabled={(date) => date < new Date()}
               className="rounded-md border"
+              aria-labelledby="calendar-label"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Reason for Rescheduling</label>
-            <Select onValueChange={setReason} value={reason}>
+            <label className="text-sm font-medium" id="reason-label">Reason for Rescheduling</label>
+            <Select onValueChange={setReason} value={reason} aria-labelledby="reason-label">
               <SelectTrigger>
                 <SelectValue placeholder="Select a reason" />
               </SelectTrigger>
