@@ -13,6 +13,7 @@ import { ScrollArea } from "./scroll-area";
 import { useState } from "react";
 import { LanguageSwitcher } from "./language-switcher";
 import { useTranslation } from "react-i18next";
+import { OnboardingTour } from "./onboarding-tour";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "navigation.dashboard", href: "/" },
@@ -26,6 +27,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
+  const [showTour] = useState(() => {
+    // Check if this is the user's first visit
+    const hasSeenTour = localStorage.getItem("hasSeenTour");
+    if (!hasSeenTour) {
+      localStorage.setItem("hasSeenTour", "true");
+      return true;
+    }
+    return false;
+  });
 
   const Sidebar = () => (
     <div className="space-y-6 py-4">
@@ -34,11 +44,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           Medical Admin
         </h2>
         <div className="space-y-1">
-          {menuItems.map(({ icon: Icon, label, href }) => (
+          {menuItems.map(({ icon: Icon, label, href, dataTour }) => (
             <Link key={href} href={href}>
               <Button
                 variant={location === href ? "secondary" : "ghost"}
                 className="w-full justify-start transition-colors duration-200"
+                data-tour={dataTour}
               >
                 <Icon className="mr-2 h-4 w-4" />
                 {t(label)}
@@ -57,6 +68,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-background antialiased">
+      {showTour && <OnboardingTour />}
+
       {/* Desktop Sidebar */}
       <aside className="hidden lg:block w-64 border-r bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
         <ScrollArea className="h-screen">

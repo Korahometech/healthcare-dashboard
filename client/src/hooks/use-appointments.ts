@@ -17,7 +17,6 @@ export function useAppointments() {
 
   const { data: appointments = [], isLoading } = useQuery<SelectAppointment[]>({
     queryKey: ["/api/appointments"],
-    staleTime: 0,
   });
 
   const createAppointment = useMutation({
@@ -77,25 +76,9 @@ export function useAppointments() {
         method: "DELETE",
       });
       if (!res.ok) throw new Error(await res.text());
-      return id;
+      return res.json();
     },
-    onMutate: async (deletedId) => {
-      await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
-      const previousAppointments = queryClient.getQueryData<SelectAppointment[]>(["/api/appointments"]);
-
-      queryClient.setQueryData<SelectAppointment[]>(
-        ["/api/appointments"],
-        (old = []) => old.filter(appointment => appointment.id !== deletedId)
-      );
-
-      return { previousAppointments };
-    },
-    onError: (_, __, context) => {
-      if (context?.previousAppointments) {
-        queryClient.setQueryData(["/api/appointments"], context.previousAppointments);
-      }
-    },
-    onSettled: () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });

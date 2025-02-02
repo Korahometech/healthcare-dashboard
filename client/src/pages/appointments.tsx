@@ -56,7 +56,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useQueryClient } from "@tanstack/react-query";
 
 type ExtendedAppointment = SelectAppointment & {
   patient?: { name: string };
@@ -88,7 +87,6 @@ export default function Appointments() {
   const { patients } = usePatients();
   const { doctors } = useDoctors();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const form = useForm<CreateAppointmentInput>({
     resolver: zodResolver(createAppointmentSchema),
@@ -139,21 +137,6 @@ export default function Appointments() {
       toast({
         title: "Error",
         description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-    const handleDeleteAppointment = async (appointmentId: number) => {
-    try {
-      await deleteAppointment(appointmentId);
-      toast({
-        title: "Success",
-        description: "Appointment deleted successfully",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete appointment",
         variant: "destructive",
       });
     }
@@ -443,7 +426,21 @@ export default function Appointments() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          onClick={() => handleDeleteAppointment(appointment.id)}
+                          onClick={async () => {
+                            try {
+                              await deleteAppointment(appointment.id);
+                              toast({
+                                title: "Appointment deleted",
+                                description: "The appointment has been successfully deleted.",
+                              });
+                            } catch (error: any) {
+                              toast({
+                                title: "Error",
+                                description: error.message,
+                                variant: "destructive",
+                              });
+                            }
+                          }}
                         >
                           Delete
                         </AlertDialogAction>

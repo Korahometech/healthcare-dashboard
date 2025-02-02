@@ -391,17 +391,7 @@ export default function Analytics() {
                         stroke={`hsl(var(--chart-${(index % 4) + 1}))`}
                         dot={false}
                         strokeWidth={2}
-                        activeDot={{ 
-                            r: 6, 
-                            className: "animate-pulse transition-all duration-300 hover:r-8",
-                            strokeWidth: 2,
-                            onClick: () => {
-                              toast({
-                                title: `${trend.category}`,
-                                description: `Showing detailed metrics for ${trend.category}`,
-                              });
-                            }
-                          }}
+                        activeDot={{ r: 4, className: "animate-pulse" }}
                       />
                       <Area
                         type="monotone"
@@ -519,7 +509,7 @@ export default function Analytics() {
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}
-                        className="opacity-80 hover:opacity-100 transition-opacity cursor-pointer animate-in zoom-in-95"
+                        className="opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
                       />
                     ))}
                   </Bar>
@@ -556,7 +546,7 @@ export default function Analytics() {
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
-                    className="transition-all duration-300"
+                      className="transition-all duration-300"
                     label={({ gender, percent }) =>
                       `${gender} ${(percent * 100).toFixed(0)}%`
                     }
@@ -565,7 +555,7 @@ export default function Analytics() {
                       <Cell
                         key={`cell-${index}`}
                         fill={COLORS[index % COLORS.length]}
-                        className="opacity-80 hover:opacity-100 transition-opacity cursor-pointer animate-in zoom-in-95"
+                          className="opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
                       />
                     ))}
                   </Pie>
