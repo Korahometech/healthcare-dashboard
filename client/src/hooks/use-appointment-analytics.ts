@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { SelectAppointment } from "@db/schema";
-import { startOfDay, endOfDay, differenceInMinutes, addDays, format } from "date-fns";
+import { startOfDay, endOfDay, differenceInMinutes, addDays, format, subDays } from "date-fns";
 
 interface WaitTimeEstimate {
   timeSlot: string;
@@ -171,7 +171,12 @@ export function predictOptimalSlots(
       existingAppointments
     );
 
-    const score = calculateSlotScore(slotTime, conflictingAppointments.length, estimatedWait);
+     const score = calculateSlotScore(slotTime, conflictingAppointments.length, estimatedWait,
+         {
+            averageWaitTime: 0, // will implement later
+            noShowRate: 0.1, // will implement later
+            cancellationRate: 0.1 // will implement later
+        });
 
     if (score > 0.7) {
       suggestedSlots.push({
@@ -179,13 +184,20 @@ export function predictOptimalSlots(
         endTime: format(new Date(slotTime.getTime() + duration * 60000), 'HH:mm'),
         probability: score,
         expectedWaitTime: estimatedWait,
-        suggestion: getSuggestionText(score, estimatedWait)
+        suggestion: getSuggestionText(score, estimatedWait, {
+           noShowRate: 0.1, // will implement later
+           averageWaitTime: 0 // will implement later
+        })
       });
     } else {
       alternativeSlots.push({
         time: format(slotTime, 'HH:mm'),
         score,
-        reason: getReasonText(score, estimatedWait, conflictingAppointments.length)
+        reason: getReasonText(score, estimatedWait, conflictingAppointments.length,
+            {
+              noShowRate: 0.1, // will implement later
+               cancellationRate: 0.1 // will implement later
+            })
       });
     }
   });
@@ -201,23 +213,41 @@ export function predictOptimalSlots(
 function calculateSlotScore(
   time: Date,
   conflictCount: number,
-  estimatedWait: number
+  estimatedWait: number,
+  historicalData?: {
+    averageWaitTime: number;
+    noShowRate: number;
+    cancellationRate: number;
+  }
 ): number {
   let score = 1.0;
 
-  // Penalize for conflicts
+  // Base penalties
   score -= conflictCount * 0.2;
-
-  // Penalize for high wait times
   score -= (estimatedWait / 60) * 0.1;
 
-  // Prefer mid-morning and mid-afternoon slots
+  // Time of day preferences
   const hour = time.getHours();
-  if (hour >= 10 && hour <= 11) score += 0.1;
-  if (hour >= 14 && hour <= 15) score += 0.1;
+  if (hour >= 10 && hour <= 11) score += 0.15; // Premium morning slots
+  if (hour >= 14 && hour <= 15) score += 0.15; // Premium afternoon slots
+  if (hour >= 16 && hour <= 17) score += 0.1;  // Late afternoon preference
 
-  // Avoid lunch hour
-  if (hour >= 12 && hour <= 13) score -= 0.1;
+  // Avoid problematic times
+  if (hour >= 12 && hour <= 13) score -= 0.15; // Lunch hour penalty
+  if (hour < 9 || hour >= 17) score -= 0.2;    // Early/late penalty
+
+  // Historical data adjustments
+  if (historicalData) {
+    score += (1 - historicalData.noShowRate) * 0.1;     // Reward low no-show rates
+    score += (1 - historicalData.cancellationRate) * 0.1; // Reward low cancellation rates
+    score -= (historicalData.averageWaitTime / 60) * 0.05; // Penalize high historical wait times
+  }
+
+  // Day of week adjustments
+  const dayOfWeek = time.getDay();
+  if (dayOfWeek === 1) score -= 0.1; // Monday penalty
+  if (dayOfWeek === 5) score -= 0.05; // Friday slight penalty
+  if (dayOfWeek === 0 || dayOfWeek === 6) score -= 0.2; // Weekend penalty
 
   return Math.max(0, Math.min(1, score));
 }
@@ -227,16 +257,37 @@ function calculateOverallConfidence(slots: ScheduleOptimization['suggestedTimeSl
   return slots.reduce((sum, slot) => sum + slot.probability, 0) / slots.length;
 }
 
-function getSuggestionText(score: number, waitTime: number): string {
-  if (score > 0.8) return "Highly recommended slot with minimal wait time";
-  if (score > 0.6) return `Moderate wait time expected (${waitTime} minutes)`;
-  return "May experience longer wait times";
+function getSuggestionText(
+  score: number,
+  waitTime: number,
+  historicalData?: { noShowRate: number; averageWaitTime: number }
+): string {
+  if (score > 0.8) {
+    return historicalData?.noShowRate < 0.1
+      ? "Premium slot with excellent historical reliability"
+      : "Highly recommended slot with minimal wait time";
+  }
+  if (score > 0.6) {
+    return `Good slot with moderate wait (${waitTime} mins). ${
+      historicalData?.averageWaitTime
+        ? `Historical average: ${Math.round(historicalData.averageWaitTime)}min`
+        : ""
+    }`;
+  }
+  return "May experience longer wait times or scheduling conflicts";
 }
 
-function getReasonText(score: number, waitTime: number, conflicts: number): string {
+function getReasonText(
+  score: number,
+  waitTime: number,
+  conflicts: number,
+  historicalData?: { noShowRate: number; cancellationRate: number }
+): string {
   const reasons = [];
   if (waitTime > 30) reasons.push("High expected wait time");
   if (conflicts > 0) reasons.push("Schedule conflicts");
   if (score < 0.3) reasons.push("Peak hour");
+  if (historicalData?.noShowRate > 0.2) reasons.push("High no-show rate");
+  if (historicalData?.cancellationRate > 0.15) reasons.push("High cancellation rate");
   return reasons.join(", ") || "Generally less optimal time slot";
 }
