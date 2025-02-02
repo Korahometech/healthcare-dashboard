@@ -74,8 +74,12 @@ export function useAppointments() {
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/appointments/${id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to delete appointment");
+      }
       return res.json();
     },
     onSuccess: () => {
