@@ -701,6 +701,56 @@ export function registerRoutes(app: Express): Server {
       });
     }
   });
+  /**
+   * @swagger
+   * /api/appointments/{id}:
+   *   delete:
+   *     summary: Delete an appointment
+   *     description: Delete a specific appointment by ID
+   *     tags: [Appointments]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Appointment ID
+   *     responses:
+   *       200:
+   *         description: Appointment deleted successfully
+   *       500:
+   *         description: Server error
+   */
+  app.delete("/api/appointments/:id", async (req, res) => {
+    try {
+      const appointmentId = parseInt(req.params.id);
+
+      await db.transaction(async (tx) => {
+        // First delete any associated teleconsultation
+        await tx
+          .delete(teleconsultations)
+          .where(eq(teleconsultations.appointmentId, appointmentId));
+
+        // Then delete the appointment
+        const [deletedAppointment] = await tx
+          .delete(appointments)
+          .where(eq(appointments.id, appointmentId))
+          .returning();
+
+        if (!deletedAppointment) {
+          return res.status(404).json({ error: 'Appointment not found' });
+        }
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Error deleting appointment:', error);
+      res.status(500).json({
+        error: 'Failed to delete appointment',
+        details: error.message
+      });
+    }
+  });
 
   /**
    * @swagger
