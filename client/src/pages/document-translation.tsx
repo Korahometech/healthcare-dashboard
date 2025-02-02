@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -47,10 +48,25 @@ type Translation = {
   completedAt?: string;
 };
 
+const SUPPORTED_LANGUAGES = {
+  en: "English",
+  es: "Español",
+  fr: "Français",
+  de: "Deutsch",
+  it: "Italiano",
+  pt: "Português",
+  ru: "Русский",
+  zh: "中文",
+  ja: "日本語",
+  ko: "한국어",
+};
+
 export default function DocumentTranslation() {
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [originalLanguage, setOriginalLanguage] = useState<string>("en");
+  const [targetLanguage, setTargetLanguage] = useState<string>("es");
   const { toast } = useToast();
 
   const { data: documents, isLoading: isLoadingDocuments } = useQuery<Document[]>({
@@ -63,11 +79,11 @@ export default function DocumentTranslation() {
         method: "POST",
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to upload document");
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -103,17 +119,17 @@ export default function DocumentTranslation() {
         },
         body: JSON.stringify({ documentId, targetLanguage }),
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to initiate translation");
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Translation initiated successfully",
+        description: "Translation initiated successfully. You will be notified when it's complete.",
       });
     },
     onError: (error: Error) => {
@@ -137,7 +153,7 @@ export default function DocumentTranslation() {
 
     const formData = new FormData();
     formData.append("file", selectedFile);
-    formData.append("originalLanguage", "en"); // You might want to make this selectable
+    formData.append("originalLanguage", originalLanguage);
 
     try {
       await uploadMutation.mutateAsync(formData);
@@ -150,7 +166,7 @@ export default function DocumentTranslation() {
     try {
       await translateMutation.mutateAsync({
         documentId,
-        targetLanguage: "es", // You might want to make this selectable
+        targetLanguage,
       });
     } catch (error) {
       console.error("Translation failed:", error);
@@ -163,7 +179,7 @@ export default function DocumentTranslation() {
         <div>
           <h1 className="text-3xl font-bold">Medical Document Translation</h1>
           <p className="text-muted-foreground mt-1">
-            Securely translate medical documents
+            Securely translate medical documents with AI-powered accuracy
           </p>
         </div>
         <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
@@ -176,14 +192,34 @@ export default function DocumentTranslation() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Upload Medical Document</DialogTitle>
+              <DialogDescription>
+                Upload a medical document for translation. Supported formats: PDF, DOC, DOCX
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={handleFileChange}
-                />
+              <div className="grid w-full gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Original Language</label>
+                  <Select value={originalLanguage} onValueChange={setOriginalLanguage}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => (
+                        <SelectItem key={code} value={code}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                  />
+                </div>
               </div>
               {uploadProgress > 0 && (
                 <Progress value={uploadProgress} className="w-full" />
@@ -191,6 +227,7 @@ export default function DocumentTranslation() {
               <Button
                 onClick={handleUpload}
                 disabled={!selectedFile || uploadMutation.isPending}
+                className="w-full"
               >
                 {uploadMutation.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -224,21 +261,38 @@ export default function DocumentTranslation() {
               {documents?.map((doc) => (
                 <TableRow key={doc.id}>
                   <TableCell className="font-medium">{doc.fileName}</TableCell>
-                  <TableCell>{doc.originalLanguage}</TableCell>
+                  <TableCell>{SUPPORTED_LANGUAGES[doc.originalLanguage as keyof typeof SUPPORTED_LANGUAGES]}</TableCell>
                   <TableCell>{doc.status}</TableCell>
                   <TableCell>
                     {new Date(doc.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleTranslate(doc.id)}
-                      disabled={doc.status !== "completed"}
-                    >
-                      <Languages className="h-4 w-4 mr-2" />
-                      Translate
-                    </Button>
+                    {doc.status === "completed" && (
+                      <div className="flex justify-end gap-2">
+                        <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Select target language" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(SUPPORTED_LANGUAGES)
+                              .filter(([code]) => code !== doc.originalLanguage)
+                              .map(([code, name]) => (
+                                <SelectItem key={code} value={code}>
+                                  {name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleTranslate(doc.id)}
+                        >
+                          <Languages className="h-4 w-4 mr-2" />
+                          Translate
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

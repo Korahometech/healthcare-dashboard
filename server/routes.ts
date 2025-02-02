@@ -28,7 +28,8 @@ import { sendEmail, generateAppointmentEmail } from "./lib/email";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import OpenAI from "openai";
-
+// Add after the existing imports
+import { medicalDocuments, documentTranslations } from "@db/schema";
 const openai = new OpenAI();
 
 export function registerRoutes(app: Express): Server {
@@ -886,8 +887,219 @@ Mood: ${h.mood}
       });
     }
   });
+// Add these routes before the httpServer creation
+  /**
+   * @swagger
+   * /api/medical-documents/upload:
+   *   post:
+   *     summary: Upload a medical document
+   *     tags: [Documents]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               file:
+   *                 type: string
+   *                 format: binary
+   *               originalLanguage:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Document uploaded successfully
+   */
+  app.post("/api/medical-documents/upload", async (req, res) => {
+    try {
+      // Handle file upload logic here
+      const [document] = await db
+        .insert(medicalDocuments)
+        .values({
+          fileName: req.body.fileName,
+          fileType: req.body.fileType,
+          fileSize: req.body.fileSize,
+          originalLanguage: req.body.originalLanguage,
+          secureUrl: req.body.secureUrl,
+          status: "pending",
+        })
+        .returning();
 
+      // Send email notification about upload
+      await sendEmail({
+        to: document.uploadedBy ? (await db.query.doctors.findFirst({ where: eq(doctors.id, document.uploadedBy) }))?.email : process.env.ADMIN_EMAIL!,
+        subject: "Medical Document Upload Confirmation",
+        text: `A new medical document "${document.fileName}" has been uploaded and is ready for processing.`,
+        html: `
+          <h2>Medical Document Upload Confirmation</h2>
+          <p>A new medical document has been uploaded to the system:</p>
+          <ul>
+            <li>File Name: ${document.fileName}</li>
+            <li>Original Language: ${document.originalLanguage}</li>
+            <li>Status: Pending Processing</li>
+          </ul>
+          <p>You will be notified when the document is ready for translation.</p>
+        `,
+      });
 
+      res.json(document);
+    } catch (error: any) {
+      console.error("Error uploading document:", error);
+      res.status(500).json({
+        error: "Failed to upload document",
+        details: error.message,
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/medical-documents/translate:
+   *   post:
+   *     summary: Initiate document translation
+   *     tags: [Documents]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - documentId
+   *               - targetLanguage
+   *             properties:
+   *               documentId:
+   *                 type: integer
+   *               targetLanguage:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Translation initiated successfully
+   */
+  app.post("/api/medical-documents/translate", async (req, res) => {
+    try {
+      const { documentId, targetLanguage } = req.body;
+
+      const document = await db.query.medicalDocuments.findFirst({
+        where: eq(medicalDocuments.id, documentId),
+        with: {
+          uploader: true,
+        },
+      });
+
+      if (!document) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      const [translation] = await db
+        .insert(documentTranslations)
+        .values({
+          documentId,
+          targetLanguage,
+          status: "pending",
+        })
+        .returning();
+
+      // Send email notification about translation initiation
+      if (document.uploader?.email) {
+        await sendEmail({
+          to: document.uploader.email,
+          subject: "Document Translation Initiated",
+          text: `Translation of "${document.fileName}" to ${targetLanguage} has been initiated.`,
+          html: `
+            <h2>Document Translation Initiated</h2>
+            <p>A translation has been initiated for your document:</p>
+            <ul>
+              <li>Document: ${document.fileName}</li>
+              <li>From: ${document.originalLanguage}</li>
+              <li>To: ${targetLanguage}</li>
+            </ul>
+            <p>You will be notified when the translation is complete.</p>
+          `,
+        });
+      }
+
+      res.json(translation);
+    } catch (error: any) {
+      console.error("Error initiating translation:", error);
+      res.status(500).json({
+        error: "Failed to initiate translation",
+        details: error.message,
+      });
+    }
+  });
+
+  // Add a webhook endpoint for translation service to notify completion
+  app.post("/api/medical-documents/translation-complete", async (req, res) => {
+    try {
+      const { translationId, success, translatedUrl, errorMessage } = req.body;
+
+      const translation = await db.query.documentTranslations.findFirst({
+        where: eq(documentTranslations.id, translationId),
+        with: {
+          document: {
+            with: {
+              uploader: true,
+            },
+          },
+        },
+      });
+
+      if (!translation) {
+        return res.status(404).json({ error: "Translation not found" });
+      }
+
+      // Update translation status
+      await db
+        .update(documentTranslations)
+        .set({
+          status: success ? "completed" : "error",
+          translatedUrl: success ? translatedUrl : null,
+          errorMessage: success ? null : errorMessage,
+          completedAt: new Date(),
+        })
+        .where(eq(documentTranslations.id, translationId));
+
+      // Send email notification
+      if (translation.document?.uploader?.email) {
+        await sendEmail({
+          to: translation.document.uploader.email,
+          subject: success ? "Document Translation Completed" : "Document Translation Failed",
+          text: success
+            ? `Translation of "${translation.document.fileName}" is complete.`
+            : `Translation of "${translation.document.fileName}" failed: ${errorMessage}`,
+          html: success
+            ? `
+              <h2>Document Translation Completed</h2>
+              <p>The translation of your document has been completed:</p>
+              <ul>
+                <li>Document: ${translation.document.fileName}</li>
+                <li>From: ${translation.document.originalLanguage}</li>
+                <li>To: ${translation.targetLanguage}</li>
+              </ul>
+              <p>You can now access the translated document in the system.</p>
+            `
+            : `
+              <h2>Document Translation Failed</h2>
+              <p>Unfortunately, the translation of your document has failed:</p>
+              <ul>
+                <li>Document: ${translation.document.fileName}</li>
+                <li>Error: ${errorMessage}</li>
+              </ul>
+              <p>Please try again or contact support if the issue persists.</p>
+            `,
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error handling translation completion:", error);
+      res.status(500).json({
+        error: "Failed to process translation completion",
+        details: error.message,
+      });
+    }
+  });
   const httpServer = createServer(app);
     return httpServer;
 }
