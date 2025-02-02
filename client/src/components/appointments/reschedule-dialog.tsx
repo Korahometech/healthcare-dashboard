@@ -58,16 +58,18 @@ export function RescheduleDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Reschedule Appointment</DialogTitle>
           <DialogDescription>
-            Select a new date and provide a reason for rescheduling.
+            Please select a new date and provide a reason for rescheduling.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium" id="calendar-label">New Date</label>
+            <label className="text-sm font-medium" id="calendar-label">
+              New Date
+            </label>
             <Calendar
               mode="single"
               selected={date}
@@ -78,8 +80,14 @@ export function RescheduleDialog({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium" id="reason-label">Reason for Rescheduling</label>
-            <Select onValueChange={setReason} value={reason} aria-labelledby="reason-label">
+            <label className="text-sm font-medium" id="reason-label">
+              Reason for Rescheduling
+            </label>
+            <Select 
+              onValueChange={setReason} 
+              value={reason}
+              aria-labelledby="reason-label"
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a reason" />
               </SelectTrigger>
