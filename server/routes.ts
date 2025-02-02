@@ -28,9 +28,34 @@ import { sendEmail, generateAppointmentEmail } from "./lib/email";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import OpenAI from "openai";
-// Add after the existing imports
+import multer from "multer";
+import path from "path";
 import { medicalDocuments, documentTranslations } from "@db/schema";
 const openai = new OpenAI();
+
+const storage = multer.diskStorage({
+  destination: "uploads/",
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.pdf', '.doc', '.docx'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, DOC, and DOCX files are allowed.'));
+    }
+  }
+});
 
 export function registerRoutes(app: Express): Server {
   // Swagger UI route
@@ -887,7 +912,6 @@ Mood: ${h.mood}
       });
     }
   });
-// Add these routes before the httpServer creation
   /**
    * @swagger
    * /api/medical-documents/upload:
@@ -910,50 +934,53 @@ Mood: ${h.mood}
    *       200:
    *         description: Document uploaded successfully
    */
-  app.post("/api/medical-documents/upload", async (req, res) => {
-    try {
-      // Handle file upload logic here
-      const [document] = await db
-        .insert(medicalDocuments)
-        .values({
-          fileName: req.body.fileName,
-          fileType: req.body.fileType,
-          fileSize: req.body.fileSize,
-          originalLanguage: req.body.originalLanguage,
-          secureUrl: req.body.secureUrl,
-          status: "pending",
-        })
-        .returning();
-
-      // Send email notification about upload
-      await sendEmail({
-        to: document.uploadedBy ? (await db.query.doctors.findFirst({ where: eq(doctors.id, document.uploadedBy) }))?.email : process.env.ADMIN_EMAIL!,
-        subject: "Medical Document Upload Confirmation",
-        text: `A new medical document "${document.fileName}" has been uploaded and is ready for processing.`,
-        html: `
-          <h2>Medical Document Upload Confirmation</h2>
-          <p>A new medical document has been uploaded to the system:</p>
-          <ul>
-            <li>File Name: ${document.fileName}</li>
-            <li>Original Language: ${document.originalLanguage}</li>
-            <li>Status: Pending Processing</li>
-          </ul>
-          <p>You will be notified when the document is ready for translation.</p>
-        `,
-      });
-
-      res.json(document);
-    } catch (error: any) {
-      console.error("Error uploading document:", error);
-      res.status(500).json({
-        error: "Failed to upload document",
-        details: error.message,
-      });
-    }
-  });
-
+    app.post("/api/medical-documents/upload", upload.single('file'), async (req, res) => {
+      try {
+        if (!req.file) {
+          throw new Error('No file uploaded');
+        }
+  
+        const [document] = await db
+          .insert(medicalDocuments)
+          .values({
+            fileName: req.file.originalname,
+            fileType: path.extname(req.file.originalname).slice(1),
+            fileSize: req.file.size,
+            originalLanguage: req.body.originalLanguage,
+            secureUrl: req.file.path,
+            status: "pending",
+          })
+          .returning();
+  
+        // Send email notification about upload
+        await sendEmail({
+          to: document.uploadedBy ? (await db.query.doctors.findFirst({ where: eq(doctors.id, document.uploadedBy) }))?.email : process.env.ADMIN_EMAIL!,
+          subject: "Medical Document Upload Confirmation",
+          text: `A new medical document "${document.fileName}" has been uploaded and is ready for processing.`,
+          html: `
+            <h2>Medical Document Upload Confirmation</h2>
+            <p>A new medical document has been uploaded to the system:</p>
+            <ul>
+              <li>File Name: ${document.fileName}</li>
+              <li>Original Language: ${document.originalLanguage}</li>
+              <li>Status: Pending Processing</li>
+            </ul>
+            <p>You will be notified when the document is ready for translation.</p>
+          `,
+        });
+  
+        res.json(document);
+      } catch (error: any) {
+        console.error("Error uploading document:", error);
+        res.status(500).json({
+          error: "Failed to upload document",
+          details: error.message,
+        });
+      }
+    });
+  
   /**
-   * @swagger
+   *   * @swagger
    * /api/medical-documents/translate:
    *   post:
    *     summary: Initiate document translation
