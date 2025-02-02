@@ -191,11 +191,11 @@ function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex justify-between items-center mb-2">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight">Dashboard Overview</h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard Overview</h1>
+          <p className="text-sm text-muted-foreground">
             Monitor your clinical practice performance
           </p>
         </div>
@@ -203,16 +203,16 @@ function Dashboard() {
           document={<DashboardPDFReport data={reportData} />}
           fileName={`healthcare-dashboard-${format(new Date(), "yyyy-MM-dd")}.pdf`}
         >
-          {({ loading, error }) => (
-            <Button variant="outline" size="lg" className="gap-2 hover:bg-primary hover:text-primary-foreground transition-colors" disabled={loading}>
+          {({ loading }) => (
+            <Button variant="outline" size="sm" className="gap-2" disabled={loading}>
               <Download className="h-4 w-4" />
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating PDF...
+                  Generating...
                 </>
               ) : (
-                "Export Report (PDF)"
+                "Export PDF"
               )}
             </Button>
           )}
@@ -221,43 +221,43 @@ function Dashboard() {
 
       <QuickActions actions={dashboardActions} />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Total Patients"
           value={patients.length}
-          icon={<Users className="h-5 w-5" />}
+          icon={<Users className="h-4 w-4" />}
           description="Registered patients"
         />
         <StatsCard
           title="Total Appointments"
           value={appointments.length}
-          icon={<Calendar className="h-5 w-5" />}
+          icon={<Calendar className="h-4 w-4" />}
           description="Appointments to date"
           trending={appointmentsTrending}
         />
         <StatsCard
-          title="Confirmed Appointments"
+          title="Confirmed"
           value={confirmedAppointments}
-          icon={<CheckCircle className="h-5 w-5" />}
-          description="Successfully completed"
+          icon={<CheckCircle className="h-4 w-4" />}
+          description="Completed"
         />
         <StatsCard
-          title="Cancelled Appointments"
+          title="Cancelled"
           value={canceledAppointments}
-          icon={<XCircle className="h-5 w-5" />}
-          description="Cancelled or missed"
+          icon={<XCircle className="h-4 w-4" />}
+          description="Cancelled/missed"
         />
       </div>
 
       <DashboardLayout defaultSizes={[40, 60]}>
         <DashboardPanel>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-2xl font-semibold">Appointment Status</h2>
-              <p className="text-sm text-muted-foreground mt-1">Current distribution</p>
+              <h2 className="text-lg font-semibold">Appointment Status</h2>
+              <p className="text-xs text-muted-foreground">Current distribution</p>
             </div>
           </div>
-          <div className="h-[300px]">
+          <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -302,16 +302,16 @@ function Dashboard() {
         </DashboardPanel>
 
         <DashboardPanel>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-2xl font-semibold">Growth Trends</h2>
-              <p className="text-sm text-muted-foreground mt-1">Patient and appointment growth</p>
+              <h2 className="text-lg font-semibold">Growth Trends</h2>
+              <p className="text-xs text-muted-foreground">Patient and appointment growth</p>
             </div>
             <Select
               value={timeRange}
               onValueChange={setTimeRange}
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[140px] h-8 text-xs">
                 <SelectValue placeholder="Select time range" />
               </SelectTrigger>
               <SelectContent>
@@ -321,7 +321,7 @@ function Dashboard() {
               </SelectContent>
             </Select>
           </div>
-          <div className="h-[300px]">
+          <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={monthlyStats} className="transition-all duration-300">
                 <CartesianGrid strokeDasharray="3 3" className="opacity-50" />
