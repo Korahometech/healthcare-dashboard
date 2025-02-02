@@ -17,7 +17,7 @@ export function useAppointments() {
 
   const { data: appointments = [], isLoading } = useQuery<SelectAppointment[]>({
     queryKey: ["/api/appointments"],
-    staleTime: 0, // Ensure we always get fresh data
+    staleTime: 0,
   });
 
   const createAppointment = useMutation({
@@ -85,12 +85,27 @@ export function useAppointments() {
       // Return the ID of the deleted appointment
       return id;
     },
-    onSuccess: (deletedId) => {
-      // Immediately update the cache to remove the deleted appointment
+    onMutate: async (deletedId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/appointments"] });
+
+      // Snapshot the previous value
+      const previousAppointments = queryClient.getQueryData(["/api/appointments"]);
+
+      // Optimistically update to the new value
       queryClient.setQueryData(["/api/appointments"], (old: SelectAppointment[] | undefined) => {
         return old ? old.filter(appointment => appointment.id !== deletedId) : [];
       });
-      // Then invalidate to refetch
+
+      // Return a context object with the snapshotted value
+      return { previousAppointments };
+    },
+    onError: (err, deletedId, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      queryClient.setQueryData(["/api/appointments"], context?.previousAppointments);
+    },
+    onSettled: () => {
+      // Always refetch after error or success
       queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
     },
   });
