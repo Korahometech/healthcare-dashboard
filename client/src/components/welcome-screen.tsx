@@ -1,12 +1,15 @@
-import { useAuth } from "@/hooks/use-auth";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock } from "lucide-react";
 
-export function WelcomeScreen() {
-  const { user } = useAuth();
+interface WelcomeScreenProps {
+  name?: string;
+  role?: 'doctor' | 'patient' | 'admin';
+}
+
+export function WelcomeScreen({ name = "User", role }: WelcomeScreenProps) {
   const { t } = useTranslation();
-  
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return t("welcome.greeting.morning");
@@ -15,7 +18,7 @@ export function WelcomeScreen() {
   };
 
   const getRoleSpecificMessage = () => {
-    switch (user?.role) {
+    switch (role) {
       case 'doctor':
         return t("welcome.role.doctor");
       case 'patient':
@@ -27,8 +30,6 @@ export function WelcomeScreen() {
     }
   };
 
-  if (!user) return null;
-
   return (
     <Card className="border-none shadow-none bg-gradient-to-r from-primary/10 via-primary/5 to-background">
       <CardHeader className="pb-4">
@@ -37,7 +38,7 @@ export function WelcomeScreen() {
           <span>{getGreeting()}</span>
         </div>
         <CardTitle className="text-2xl font-bold">
-          {t("welcome.title", { name: user.username })}
+          {t("welcome.title", { name })}
         </CardTitle>
       </CardHeader>
       <CardContent>

@@ -167,7 +167,7 @@ function Dashboard() {
         transition={{ duration: 0.3 }}
         className="space-y-6"
       >
-        <WelcomeScreen />
+        <WelcomeScreen name="Dr. Smith" role="doctor" />
 
         <div className="flex justify-between items-center">
           <motion.div
