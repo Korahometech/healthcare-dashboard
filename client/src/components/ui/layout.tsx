@@ -31,7 +31,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const { user, logoutMutation } = useAuth();
   const [showTour] = useState(() => {
-    // Check if this is the user's first visit
     const hasSeenTour = localStorage.getItem("hasSeenTour");
     if (!hasSeenTour) {
       localStorage.setItem("hasSeenTour", "true");
@@ -39,11 +38,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
     return false;
   });
-
-  // Don't show layout if not authenticated (except for auth page)
-  if (!user && location !== "/auth") {
-    return <>{children}</>;
-  }
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -88,6 +82,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
+
+  // If we're on the auth page, only render the content without the layout
+  if (location === "/auth") {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-background antialiased">
