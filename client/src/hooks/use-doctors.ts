@@ -15,7 +15,7 @@ export function useDoctors() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...doctor,
-          startDate: doctor.startDate?.toISOString(),
+          startDate: doctor.startDate instanceof Date ? doctor.startDate.toISOString() : null,
         }),
       });
       if (!res.ok) {

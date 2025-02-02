@@ -199,11 +199,12 @@ function Dashboard() {
             Monitor your clinical practice performance
           </p>
         </div>
+        {/* Export PDF functionality */}
         <PDFDownloadLink
           document={<DashboardPDFReport data={reportData} />}
           fileName={`healthcare-dashboard-${format(new Date(), "yyyy-MM-dd")}.pdf`}
         >
-          {({ loading }) => (
+          {({ loading }: { loading: boolean }) => (
             <Button variant="outline" size="sm" className="gap-2" disabled={loading}>
               <Download className="h-4 w-4" />
               {loading ? (
