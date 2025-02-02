@@ -60,6 +60,7 @@ import {
 } from "@/lib/analytics";
 import { format } from 'date-fns';
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
+import { QuickActions, analyticsActions } from "@/components/ui/quick-actions";
 const COLORS = [
   'hsl(var(--primary))',
   'hsl(var(--chart-2))',
@@ -212,7 +213,7 @@ export default function Analytics() {
             document={<AnalyticsPDFReport data={analyticsData} />}
             fileName={`healthcare-analytics-${format(new Date(), "yyyy-MM-dd")}.pdf`}
           >
-            {({ loading, error }) => (
+            {({ loading }) => (
               <Button variant="outline" className="gap-2" disabled={loading}>
                 <Download className="h-4 w-4" />
                 {loading ? (
@@ -227,6 +228,8 @@ export default function Analytics() {
             )}
           </PDFDownloadLink>
         </div>
+
+        <QuickActions actions={analyticsActions} />
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatsCard

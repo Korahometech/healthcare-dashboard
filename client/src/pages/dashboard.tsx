@@ -32,6 +32,7 @@ import {
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { SelectAppointment } from "@db/schema";
+import { QuickActions, dashboardActions } from "@/components/ui/quick-actions";
 
 const COLORS = [
   'hsl(var(--primary))',
@@ -176,6 +177,8 @@ function Dashboard() {
           )}
         </PDFDownloadLink>
       </div>
+
+      <QuickActions actions={dashboardActions} />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
