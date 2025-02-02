@@ -1131,6 +1131,30 @@ Mood: ${h.mood}
       });
     }
   });
+  /**
+   * @swagger
+   * /api/medical-documents:
+   *   get:
+   *     summary: Get all medical documents
+   *     tags: [Documents]
+   *     responses:
+   *       200:
+   *         description: List of medical documents
+   */
+  app.get("/api/medical-documents", async (req, res) => {
+    try {
+      const documents = await db.query.medicalDocuments.findMany({
+        orderBy: (medicalDocuments, { desc }) => [desc(medicalDocuments.createdAt)],
+      });
+      res.json(documents);
+    } catch (error: any) {
+      console.error("Error fetching documents:", error);
+      res.status(500).json({
+        error: "Failed to fetch documents",
+        details: error.message,
+      });
+    }
+  });
   const httpServer = createServer(app);
     return httpServer;
 }

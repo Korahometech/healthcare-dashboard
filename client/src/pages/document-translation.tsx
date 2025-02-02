@@ -69,8 +69,15 @@ export default function DocumentTranslation() {
   const [targetLanguage, setTargetLanguage] = useState<string>("es");
   const { toast } = useToast();
 
-  const { data: documents, isLoading: isLoadingDocuments } = useQuery<Document[]>({
+  const { data: documents, isLoading: isLoadingDocuments } = useQuery({
     queryKey: ["/api/medical-documents"],
+    queryFn: async () => {
+      const response = await fetch("/api/medical-documents");
+      if (!response.ok) {
+        throw new Error("Failed to fetch documents");
+      }
+      return response.json();
+    },
   });
 
   const uploadMutation = useMutation({
