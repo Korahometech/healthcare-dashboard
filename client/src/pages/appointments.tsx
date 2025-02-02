@@ -176,7 +176,7 @@ export default function Appointments() {
               New Appointment
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>Schedule New Appointment</DialogTitle>
               <DialogDescription>

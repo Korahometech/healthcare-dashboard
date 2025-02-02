@@ -58,20 +58,19 @@ export function RescheduleDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="sm:max-w-[425px]"
-        aria-labelledby="reschedule-dialog-title"
-        aria-describedby="reschedule-dialog-description"
-      >
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle id="reschedule-dialog-title">Reschedule Appointment</DialogTitle>
-          <DialogDescription id="reschedule-dialog-description">
+          <DialogTitle>Reschedule Appointment</DialogTitle>
+          <DialogDescription>
             Please select a new date and provide a reason for rescheduling.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium" id="calendar-label">
+            <label 
+              id="new-date-label" 
+              className="text-sm font-medium"
+            >
               New Date
             </label>
             <Calendar
@@ -80,17 +79,20 @@ export function RescheduleDialog({
               onSelect={(newDate) => newDate && setDate(newDate)}
               disabled={(date) => date < new Date()}
               className="rounded-md border"
-              aria-labelledby="calendar-label"
+              aria-labelledby="new-date-label"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium" id="reason-label">
+            <label 
+              id="reschedule-reason-label" 
+              className="text-sm font-medium"
+            >
               Reason for Rescheduling
             </label>
             <Select 
               onValueChange={setReason} 
               value={reason}
-              aria-labelledby="reason-label"
+              aria-labelledby="reschedule-reason-label"
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a reason" />
@@ -105,12 +107,17 @@ export function RescheduleDialog({
             </Select>
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={onClose}>
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+              type="button"
+            >
               Cancel
             </Button>
             <Button
               onClick={handleReschedule}
               disabled={!reason || isSubmitting}
+              type="button"
             >
               {isSubmitting ? (
                 <>
