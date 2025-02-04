@@ -53,3 +53,6 @@ vite.config.ts.*
 .replit/
 .breakpoints
 replit.nix
+
+# Uploads
+uploads/
